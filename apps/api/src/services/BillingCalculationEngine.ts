@@ -16,6 +16,7 @@ export interface AuthoritativeQuoteRequest {
     batchId: string;
     quantityUnits: number;
     discountBps?: number;
+    customGstRateBps?: number;
   }>;
   overallDiscountBps?: number;
   customerStateCode?: string;
@@ -91,7 +92,7 @@ export class BillingCalculationEngine {
 
       // Authoritative unit price from batch MRP & strip size
       const unitPricePaise = calculateUnitPrice(batch.mrpPaise, medicine.stripSize || 1);
-      const gstRateBps = medicine.gstRateBps || 0;
+      const gstRateBps = reqItem.customGstRateBps !== undefined ? reqItem.customGstRateBps : (medicine.gstRateBps || 0);
 
       verifiedLineItems.push({
         medicineId: reqItem.medicineId,

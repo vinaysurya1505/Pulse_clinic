@@ -23,6 +23,7 @@ interface CartItem {
   availableBatches: BatchInventory[];
   quantityUnits: number;
   discountBps: number;
+  customGstRateBps?: number;
 }
 
 export default function NewBillingPage() {
@@ -49,7 +50,6 @@ export default function NewBillingPage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerStateCode, setCustomerStateCode] = useState('29'); // Default Karnataka
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
-  const [prescriptionNumber, setPrescriptionNumber] = useState('');
   const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
 
   // Payment Modal
@@ -202,6 +202,7 @@ export default function NewBillingPage() {
             availableBatches: sorted,
             quantityUnits: medicine.stripSize || 1,
             discountBps: 0,
+            customGstRateBps: medicine.gstRateBps ?? 0,
           },
         ];
       });
@@ -228,6 +229,7 @@ export default function NewBillingPage() {
             batchId: item.selectedBatch.id,
             quantityUnits: item.quantityUnits,
             discountBps: item.discountBps,
+            customGstRateBps: item.customGstRateBps,
           })),
           overallDiscountBps,
           customerStateCode,
@@ -268,6 +270,17 @@ export default function NewBillingPage() {
         return prev;
       }
       item.quantityUnits = newQty;
+      return updated;
+    });
+  };
+
+  const updateCartItemGst = (index: number, gstRateBps: number) => {
+    setCartItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        customGstRateBps: Math.max(0, Math.min(10000, gstRateBps)),
+      };
       return updated;
     });
   };
@@ -342,6 +355,7 @@ export default function NewBillingPage() {
           batchId: it.selectedBatch.id,
           quantityUnits: it.quantityUnits,
           discountBps: it.discountBps,
+          customGstRateBps: it.customGstRateBps,
         })),
         overallDiscountBps,
         paymentModes,
@@ -352,7 +366,6 @@ export default function NewBillingPage() {
         },
         doctorId: selectedDoctorId || undefined,
         doctorName: selectedDoc?.name || undefined,
-        prescriptionNumber: prescriptionNumber.trim() || undefined,
         idempotencyKey: `pos-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       };
 
@@ -387,7 +400,6 @@ export default function NewBillingPage() {
         setCustomerName('');
         setCustomerPhone('');
         setSelectedDoctorId('');
-        setPrescriptionNumber('');
       }
     } catch (err: unknown) {
       if (err instanceof ApiError) setPaymentError(err.message);
@@ -796,8 +808,38 @@ export default function NewBillingPage() {
                               </div>
                             </td>
 
-                            <td style={{ padding: '12px 14px', color: '#64748b' }}>
-                              {((item.medicine.gstRateBps || 0) / 100).toFixed(0)}%
+                            <td style={{ padding: '12px 14px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="any"
+                                  value={
+                                    item.customGstRateBps !== undefined
+                                      ? (item.customGstRateBps / 100).toString()
+                                      : ((item.medicine.gstRateBps || 0) / 100).toString()
+                                  }
+                                  onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    updateCartItemGst(idx, isNaN(val) ? 0 : Math.round(val * 100));
+                                  }}
+                                  aria-label="GST Percentage"
+                                  title="Enter manual GST percentage"
+                                  style={{
+                                    width: '56px',
+                                    padding: '5px 6px',
+                                    textAlign: 'center',
+                                    borderRadius: '6px',
+                                    border: '1px solid #cbd5e1',
+                                    fontSize: '13px',
+                                    fontWeight: 600,
+                                    color: '#0f172a',
+                                    backgroundColor: '#ffffff',
+                                  }}
+                                />
+                                <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>%</span>
+                              </div>
                             </td>
 
                             <td style={{ padding: '12px 14px', fontWeight: 600, color: '#0f172a' }}>
@@ -906,7 +948,7 @@ export default function NewBillingPage() {
                   </select>
                 </div>
 
-                <div>
+                <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
                     Prescribing Doctor
                   </label>
@@ -922,32 +964,17 @@ export default function NewBillingPage() {
                       backgroundColor: '#ffffff',
                     }}
                   >
-                    <option value="">-- Select Prescriber --</option>
-                    {doctors.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        Dr. {d.name} ({d.registrationNumber})
-                      </option>
-                    ))}
+                    <option value="">-- Select Registered Doctor --</option>
+                    {doctors.length === 0 ? (
+                      <option value="" disabled>No registered doctors found (Register in Doctors menu)</option>
+                    ) : (
+                      doctors.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name.startsWith('Dr.') ? d.name : `Dr. ${d.name}`} ({d.registrationNumber}){d.specialization ? ` — ${d.specialization}` : ''}
+                        </option>
+                      ))
+                    )}
                   </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
-                    Prescription Number
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. RX-2026-904"
-                    value={prescriptionNumber}
-                    onChange={(e) => setPrescriptionNumber(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: '6px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13px',
-                    }}
-                  />
                 </div>
               </div>
             </div>

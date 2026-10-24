@@ -21,6 +21,7 @@ const quoteSchema = z.object({
       batchId: z.string().min(1),
       quantityUnits: z.number().int().positive(),
       discountBps: z.number().int().min(0).max(10000).optional(),
+      customGstRateBps: z.number().int().min(0).max(10000).optional(),
     })
   ).min(1, 'Cart cannot be empty'),
   overallDiscountBps: z.number().int().min(0).max(10000).optional(),
@@ -37,6 +38,7 @@ const finalizeBillSchema = z.object({
       batchId: z.string().min(1),
       quantityUnits: z.number().int().positive(),
       discountBps: z.number().int().min(0).max(10000).optional(),
+      customGstRateBps: z.number().int().min(0).max(10000).optional(),
     })
   ).min(1, 'Cart cannot be empty'),
   overallDiscountBps: z.number().int().min(0).max(10000).optional(),
