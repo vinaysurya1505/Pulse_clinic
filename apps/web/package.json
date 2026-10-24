@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
+    "prebuild": "tsc -p ../../packages/config/tsconfig.json && tsc -p ../../packages/types/tsconfig.json",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",

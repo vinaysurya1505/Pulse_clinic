@@ -29,8 +29,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build Shared Packages
+        run: pnpm -r --filter @pulseclinic/config --filter @pulseclinic/types build
+
       - name: Validate Environment Config
-        run: npx tsx scripts/validate-env.ts --env=development
+        run: npx -y tsx scripts/validate-env.ts --env=development
 
       - name: TypeScript Check (All Workspaces)
         run: pnpm typecheck
