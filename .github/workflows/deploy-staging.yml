@@ -1,0 +1,57 @@
+name: Staging Deployment
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging Environment
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Environment Isolation Verification (RSK-025, RSK-026)
+        run: npx tsx scripts/validate-env.ts --env=staging
+        env:
+          NODE_ENV: staging
+          FIREBASE_PROJECT_ID: ${{ secrets.STAGING_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.STAGING_NEXT_PUBLIC_API_URL }}
+          CRON_SECRET: ${{ secrets.STAGING_CRON_SECRET }}
+          OUTBOX_ENCRYPTION_KEY: ${{ secrets.STAGING_OUTBOX_ENCRYPTION_KEY }}
+          HMAC_SECRET: ${{ secrets.STAGING_HMAC_SECRET }}
+
+      - name: Automated Quality Gate (Typecheck & Tests)
+        run: |
+          pnpm typecheck
+          pnpm test:e2e
+
+      - name: Deploy Firestore Indexes & Security Rules
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only firestore:rules,firestore:indexes --project ${{ secrets.STAGING_FIREBASE_PROJECT_ID }}
+        env:
+          GCP_SA_KEY: ${{ secrets.STAGING_FIREBASE_SERVICE_ACCOUNT_KEY }}
+
+      - name: Build Web Application
+        run: pnpm --filter @pulseclinic/web build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.STAGING_NEXT_PUBLIC_API_URL }}
