@@ -1,0 +1,46 @@
+export const APP_CONFIG = {
+  apiVersion: 'v1',
+  pagination: {
+    defaultLimit: 25,
+    maxLimit: 50,
+  },
+  approvalCode: {
+    length: 8,
+    expiryMinutes: 15,
+    maxAttempts: 3,
+  },
+  csvImport: {
+    maxRowsPerChunk: 25,
+  },
+  gstSlabs: [0, 500, 1200, 1800, 2800] as const,
+} as const;
+
+export const COLLECTIONS = {
+  stores: 'stores',
+  members: (storeId: string) => `stores/${storeId}/members`,
+  medicines: (storeId: string) => `stores/${storeId}/medicines`,
+  batches: (storeId: string) => `stores/${storeId}/batches`,
+  invoices: (storeId: string) => `stores/${storeId}/invoices`,
+  stockLedger: (storeId: string) => `stores/${storeId}/stockLedger`,
+  salesLedger: (storeId: string) => `stores/${storeId}/salesLedger`,
+  suppliers: (storeId: string) => `stores/${storeId}/suppliers`,
+  supplierLedger: (storeId: string) => `stores/${storeId}/supplierLedger`,
+  purchaseOrders: (storeId: string) => `stores/${storeId}/purchaseOrders`,
+  doctors: (storeId: string) => `stores/${storeId}/doctors`,
+  employees: (storeId: string) => `stores/${storeId}/employees`,
+  employeeLedger: (storeId: string) => `stores/${storeId}/employeeLedger`,
+  expenses: (storeId: string) => `stores/${storeId}/expenses`,
+  dailySummaries: (storeId: string) => `stores/${storeId}/dailySummaries`,
+  monthlySummaries: (storeId: string) => `stores/${storeId}/monthlySummaries`,
+  dailyClosings: (storeId: string) => `stores/${storeId}/dailyClosings`,
+  approvalRequests: (storeId: string) => `stores/${storeId}/approvalRequests`,
+  refunds: (storeId: string) => `stores/${storeId}/refunds`,
+  auditLogs: (storeId: string) => `stores/${storeId}/auditLogs`,
+  notifications: (storeId: string) => `stores/${storeId}/notifications`,
+  importJobs: (storeId: string) => `stores/${storeId}/importJobs`,
+  reportJobs: (storeId: string) => `stores/${storeId}/reportJobs`,
+  counters: (storeId: string) => `stores/${storeId}/counters`,
+  cashRegister: (storeId: string) => `stores/${storeId}/cashRegister`,
+  outbox: 'outbox',
+  users: 'users',
+} as const;

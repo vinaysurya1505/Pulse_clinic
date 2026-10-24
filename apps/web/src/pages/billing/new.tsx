@@ -1,0 +1,1527 @@
+'use client';
+
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import Head from 'next/head';
+import { DashboardLayout } from '@/layouts/DashboardLayout';
+import { useStore } from '@/context/StoreContext';
+import { apiGet, apiPost, ApiError } from '@/lib/api';
+import {
+  MedicineMaster,
+  BatchInventory,
+  DoctorProfile,
+  BillingQuoteResult,
+  CalculatedLineItem,
+  PaymentEntry,
+  formatPaiseToINR,
+  calculateUnitPrice,
+  sortBatchesFEFO,
+} from '@pulseclinic/types';
+
+interface CartItem {
+  medicine: MedicineMaster;
+  selectedBatch: BatchInventory;
+  availableBatches: BatchInventory[];
+  quantityUnits: number;
+  discountBps: number;
+}
+
+export default function NewBillingPage() {
+  const { activeStore } = useStore();
+
+  // Search & Catalogue
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<MedicineMaster[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
+  const [selectedResultIndex, setSelectedResultIndex] = useState(0);
+
+  // Cart State
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [overallDiscountBps, setOverallDiscountBps] = useState(0);
+
+  // Quote State
+  const [quote, setQuote] = useState<BillingQuoteResult | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+
+  // Customer & Prescriber
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerStateCode, setCustomerStateCode] = useState('29'); // Default Karnataka
+  const [selectedDoctorId, setSelectedDoctorId] = useState('');
+  const [prescriptionNumber, setPrescriptionNumber] = useState('');
+  const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
+
+  // Payment Modal
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [cashPaise, setCashPaise] = useState(0);
+  const [upiPaise, setUpiPaise] = useState(0);
+  const [cardPaise, setCardPaise] = useState(0);
+  const [cashTenderedRupees, setCashTenderedRupees] = useState('');
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // Finalized Bill / Receipt Modal
+  const [finalizedInvoice, setFinalizedInvoice] = useState<any | null>(null);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Load doctors for prescriber dropdown
+  useEffect(() => {
+    if (!activeStore) return;
+    apiGet<{ success: boolean; doctors: DoctorProfile[] }>('/doctors?isActive=true&limit=100', activeStore.storeId)
+      .then((res) => {
+        if (res.success) setDoctors(res.doctors || []);
+      })
+      .catch(() => {});
+  }, [activeStore?.storeId]);
+
+  // Keyboard navigation shortcuts (screen-map 3.1)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // F2 or '/' to focus search
+      if (e.key === 'F2' || (e.key === '/' && document.activeElement?.tagName !== 'INPUT')) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+      // F4 to open payment modal
+      if (e.key === 'F4') {
+        e.preventDefault();
+        if (cartItems.length > 0 && quote) {
+          openPaymentModal();
+        }
+      }
+      // F10 or Ctrl+Enter to finalize
+      if (e.key === 'F10' || (e.ctrlKey && e.key === 'Enter')) {
+        e.preventDefault();
+        if (cartItems.length > 0 && quote) {
+          openPaymentModal();
+        }
+      }
+      // Esc to close modals / search
+      if (e.key === 'Escape') {
+        setIsSearchDropdownOpen(false);
+        setIsPaymentModalOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cartItems.length, quote]);
+
+  // Medicine Search Debounced
+  useEffect(() => {
+    if (!searchQuery.trim() || !activeStore) {
+      setSearchResults([]);
+      setIsSearchDropdownOpen(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await apiGet<{ success: boolean; medicines: MedicineMaster[] }>(
+          `/inventory/medicines?query=${encodeURIComponent(searchQuery.trim())}&limit=10`,
+          activeStore.storeId
+        );
+        if (res.success) {
+          setSearchResults(res.medicines || []);
+          setIsSearchDropdownOpen(true);
+          setSelectedResultIndex(0);
+        }
+      } catch (err) {
+        console.error('Search error:', err);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeStore?.storeId]);
+
+  // Add medicine to cart with automatic FEFO batch selection
+  const handleSelectMedicine = async (medicine: MedicineMaster) => {
+    if (!activeStore) return;
+    setIsSearchDropdownOpen(false);
+    setSearchQuery('');
+
+    // Fetch batches for this medicine using dedicated FEFO endpoint
+    try {
+      let batches: BatchInventory[] = [];
+      try {
+        const res = await apiGet<{ success: boolean; batches: BatchInventory[] }>(
+          `/inventory/batches/fefo?medicineId=${medicine.id}`,
+          activeStore.storeId
+        );
+        if (res.success && res.batches && res.batches.length > 0) {
+          batches = res.batches;
+        }
+      } catch (fefoErr) {
+        console.warn('FEFO route failed, falling back to batch list:', fefoErr);
+      }
+
+      if (batches.length === 0) {
+        const fallbackRes = await apiGet<{ success: boolean; batches: BatchInventory[] }>(
+          `/inventory/batches?medicineId=${medicine.id}`,
+          activeStore.storeId
+        );
+        const allBatches = fallbackRes.batches || [];
+        batches = sortBatchesFEFO(allBatches.filter((b) => b.stockUnits > 0));
+      }
+
+      if (batches.length === 0) {
+        alert(`No sellable inventory batches available for ${medicine.brandName}.`);
+        return;
+      }
+
+      const sorted = sortBatchesFEFO(batches);
+      const fefoBatch = sorted[0];
+
+      // Check if already in cart
+      setCartItems((prev) => {
+        const existingIdx = prev.findIndex((item) => item.selectedBatch.id === fefoBatch.id);
+        if (existingIdx >= 0) {
+          // Increment quantity
+          const updated = [...prev];
+          const newQty = updated[existingIdx].quantityUnits + (medicine.stripSize || 1);
+          if (newQty <= fefoBatch.stockUnits) {
+            updated[existingIdx].quantityUnits = newQty;
+          } else {
+            alert(`Stock limit reached for batch ${fefoBatch.batchNumber}. Available: ${fefoBatch.stockUnits}`);
+          }
+          return updated;
+        }
+
+        return [
+          ...prev,
+          {
+            medicine,
+            selectedBatch: fefoBatch,
+            availableBatches: sorted,
+            quantityUnits: medicine.stripSize || 1,
+            discountBps: 0,
+          },
+        ];
+      });
+    } catch (err) {
+      alert('Failed to load batch stock for selected medicine');
+    }
+  };
+
+  // Re-calculate live quote whenever cart or discounts change
+  useEffect(() => {
+    if (cartItems.length === 0 || !activeStore) {
+      setQuote(null);
+      setQuoteError(null);
+      return;
+    }
+
+    const fetchQuote = async () => {
+      setQuoteLoading(true);
+      setQuoteError(null);
+      try {
+        const payload = {
+          items: cartItems.map((item) => ({
+            medicineId: item.medicine.id,
+            batchId: item.selectedBatch.id,
+            quantityUnits: item.quantityUnits,
+            discountBps: item.discountBps,
+          })),
+          overallDiscountBps,
+          customerStateCode,
+          roundOffToRupee: true,
+        };
+
+        const res = await apiPost<{ success: boolean; quote: BillingQuoteResult }>(
+          '/bills/quote',
+          payload,
+          activeStore.storeId
+        );
+
+        if (res.success) {
+          setQuote(res.quote);
+        }
+      } catch (err: unknown) {
+        if (err instanceof ApiError) setQuoteError(err.message);
+        else setQuoteError('Failed to calculate live billing quote.');
+      } finally {
+        setQuoteLoading(false);
+      }
+    };
+
+    const timer = setTimeout(fetchQuote, 150);
+    return () => clearTimeout(timer);
+  }, [cartItems, overallDiscountBps, customerStateCode, activeStore?.storeId]);
+
+  const updateCartItemQuantity = (index: number, newQty: number) => {
+    setCartItems((prev) => {
+      const updated = [...prev];
+      const item = updated[index];
+      if (newQty <= 0) {
+        updated.splice(index, 1);
+        return updated;
+      }
+      if (newQty > item.selectedBatch.stockUnits) {
+        alert(`Cannot exceed available batch stock (${item.selectedBatch.stockUnits} units)`);
+        return prev;
+      }
+      item.quantityUnits = newQty;
+      return updated;
+    });
+  };
+
+  const updateCartItemBatch = (index: number, batchId: string) => {
+    setCartItems((prev) => {
+      const updated = [...prev];
+      const item = updated[index];
+      const newBatch = item.availableBatches.find((b) => b.id === batchId);
+      if (newBatch) {
+        item.selectedBatch = newBatch;
+        if (item.quantityUnits > newBatch.stockUnits) {
+          item.quantityUnits = newBatch.stockUnits;
+        }
+      }
+      return updated;
+    });
+  };
+
+  const removeCartItem = (index: number) => {
+    setCartItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const hasScheduleH = useMemo(() => {
+    return cartItems.some(
+      (it) => it.medicine.scheduleCategory && ['H', 'H1', 'X'].includes(it.medicine.scheduleCategory)
+    );
+  }, [cartItems]);
+
+  // Payment Modal Helpers
+  const openPaymentModal = () => {
+    if (!quote) return;
+    setCashPaise(quote.netPayablePaise); // Default 100% Cash
+    setUpiPaise(0);
+    setCardPaise(0);
+    setCashTenderedRupees((quote.netPayablePaise / 100).toString());
+    setPaymentError(null);
+    setIsPaymentModalOpen(true);
+  };
+
+  const cashChangePaise = useMemo(() => {
+    const tendered = Math.round(parseFloat(cashTenderedRupees || '0') * 100);
+    return Math.max(0, tendered - cashPaise);
+  }, [cashTenderedRupees, cashPaise]);
+
+  const handleFinalizeBill = async () => {
+    if (!activeStore || !quote) return;
+
+    // Check payment modes sum
+    const totalPaid = cashPaise + upiPaise + cardPaise;
+    if (totalPaid !== quote.netPayablePaise) {
+      setPaymentError(
+        `Total payments (₹${(totalPaid / 100).toFixed(2)}) must equal net payable (₹${(quote.netPayablePaise / 100).toFixed(2)})`
+      );
+      return;
+    }
+
+    setPaymentSubmitting(true);
+    setPaymentError(null);
+
+    const paymentModes: PaymentEntry[] = [];
+    if (cashPaise > 0) paymentModes.push({ mode: 'CASH', amountPaise: cashPaise });
+    if (upiPaise > 0) paymentModes.push({ mode: 'UPI', amountPaise: upiPaise });
+    if (cardPaise > 0) paymentModes.push({ mode: 'CARD', amountPaise: cardPaise });
+
+    const selectedDoc = doctors.find((d) => d.id === selectedDoctorId);
+
+    try {
+      const payload = {
+        items: cartItems.map((it) => ({
+          medicineId: it.medicine.id,
+          batchId: it.selectedBatch.id,
+          quantityUnits: it.quantityUnits,
+          discountBps: it.discountBps,
+        })),
+        overallDiscountBps,
+        paymentModes,
+        customer: {
+          name: customerName.trim() || undefined,
+          phone: customerPhone.trim() || undefined,
+          stateCode: customerStateCode,
+        },
+        doctorId: selectedDoctorId || undefined,
+        doctorName: selectedDoc?.name || undefined,
+        prescriptionNumber: prescriptionNumber.trim() || undefined,
+        idempotencyKey: `pos-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      };
+
+      const res = await apiPost<{ success: boolean; invoice: any }>('/bills', payload, activeStore.storeId);
+
+      if (res.success) {
+        setIsPaymentModalOpen(false);
+        setFinalizedInvoice({
+          ...res.invoice,
+          items: quote.items,
+          grossTotalPaise: quote.grossTotalPaise,
+          totalDiscountPaise: quote.totalDiscountPaise,
+          taxableTotalPaise: quote.taxableTotalPaise,
+          cgstTotalPaise: quote.cgstTotalPaise,
+          sgstTotalPaise: quote.sgstTotalPaise,
+          igstTotalPaise: quote.igstTotalPaise,
+          taxTotalPaise: quote.taxTotalPaise,
+          grandTotalPaise: quote.grandTotalPaise,
+          roundOffPaise: quote.roundOffPaise,
+          netPayablePaise: quote.netPayablePaise,
+          paymentModes,
+          customer: {
+            name: customerName,
+            phone: customerPhone,
+          },
+          doctorName: selectedDoc?.name,
+        });
+        setIsReceiptModalOpen(true);
+
+        // Reset cart
+        setCartItems([]);
+        setCustomerName('');
+        setCustomerPhone('');
+        setSelectedDoctorId('');
+        setPrescriptionNumber('');
+      }
+    } catch (err: unknown) {
+      if (err instanceof ApiError) setPaymentError(err.message);
+      else setPaymentError('Failed to finalize invoice transaction.');
+    } finally {
+      setPaymentSubmitting(false);
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <Head>
+        <title>Cashier POS Terminal | PulseClinic</title>
+        <meta
+          name="description"
+          content="Fast cashier POS terminal with FEFO batch selection, Schedule H validation, and GST invoice finalization."
+        />
+      </Head>
+
+      <div style={{ maxWidth: '1440px', margin: '0 auto', color: '#0f172a' }}>
+        {/* Top Header & Shortcuts Pill Bar */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+            gap: '12px',
+          }}
+        >
+          <div>
+            <h1 style={{ fontSize: '22px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
+              Cashier POS Terminal
+            </h1>
+            <p style={{ margin: '2px 0 0 0', color: '#64748b', fontSize: '13px' }}>
+              Sequential GST invoicing with FEFO stock deduction and Schedule H compliance.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <span
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #cbd5e1',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                color: '#475569',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <kbd style={{ backgroundColor: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>
+                F2
+              </kbd>
+              Search
+            </span>
+            <span
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #cbd5e1',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                color: '#475569',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <kbd style={{ backgroundColor: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>
+                F4
+              </kbd>
+              Payment
+            </span>
+            <span
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #cbd5e1',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                color: '#475569',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <kbd style={{ backgroundColor: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>
+                F10
+              </kbd>
+              Finalize
+            </span>
+          </div>
+        </div>
+
+        {/* Schedule H Prescription Safety Alert Banner */}
+        {hasScheduleH && (
+          <div
+            style={{
+              backgroundColor: '#fffbeb',
+              border: '1px solid #fde68a',
+              borderRadius: '10px',
+              padding: '12px 16px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+            }}
+          >
+            <span style={{ fontSize: '20px' }}>⚠️</span>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#92400e' }}>
+                Schedule H / H1 / X Prescription Drug in Cart
+              </div>
+              <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px' }}>
+                CDSCO regulations mandate logging the prescribing medical practitioner and prescription number.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* POS Split Terminal Layout: Left Cart & Search, Right Checkout Summary */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '20px', alignItems: 'start' }}>
+          {/* Left Column: Medicine Search & Cart Table */}
+          <div>
+            {/* Search Input Box */}
+            <div style={{ position: 'relative', marginBottom: '16px' }}>
+              <input
+                ref={searchInputRef}
+                type="text"
+                aria-label="Scan barcode or search medicine brand or generic name"
+                aria-expanded={isSearchDropdownOpen}
+                aria-autocomplete="list"
+                role="combobox"
+                placeholder="Scan barcode or type medicine brand / generic name (Press F2 or /)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                id="pos-medicine-search-input"
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setSelectedResultIndex((prev) => Math.min(prev + 1, searchResults.length - 1));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setSelectedResultIndex((prev) => Math.max(prev - 1, 0));
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (isSearchDropdownOpen && searchResults[selectedResultIndex]) {
+                      handleSelectMedicine(searchResults[selectedResultIndex]);
+                    }
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  paddingLeft: '40px',
+                  borderRadius: '10px',
+                  border: '2px solid #2563eb',
+                  fontSize: '15px',
+                  backgroundColor: '#ffffff',
+                  color: '#0f172a',
+                  outline: 'none',
+                  boxShadow: '0 2px 4px rgba(37,99,235,0.08)',
+                }}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  left: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  fontSize: '18px',
+                  color: '#2563eb',
+                }}
+              >
+                🔍
+              </span>
+
+              {/* Search Autocomplete Dropdown */}
+              {isSearchDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    marginTop: '6px',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '10px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    zIndex: 50,
+                    maxHeight: '360px',
+                    overflowY: 'auto',
+                  }}
+                >
+                  {searchLoading ? (
+                    <div style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                      Searching catalogue...
+                    </div>
+                  ) : searchResults.length === 0 ? (
+                    <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                      No medicines found matching &quot;{searchQuery}&quot;
+                    </div>
+                  ) : (
+                    searchResults.map((med, idx) => (
+                      <div
+                        key={med.id}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleSelectMedicine(med);
+                        }}
+                        onClick={() => handleSelectMedicine(med)}
+                        style={{
+                          padding: '12px 16px',
+                          borderBottom: '1px solid #f1f5f9',
+                          cursor: 'pointer',
+                          backgroundColor: idx === selectedResultIndex ? '#f8fafc' : '#ffffff',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          transition: 'background-color 0.1s ease',
+                        }}
+                        onMouseEnter={() => setSelectedResultIndex(idx)}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '14px' }}>
+                            {med.brandName}
+                            {med.scheduleCategory && med.scheduleCategory !== 'NONE' && (
+                              <span
+                                style={{
+                                  marginLeft: '8px',
+                                  fontSize: '11px',
+                                  padding: '1px 5px',
+                                  borderRadius: '4px',
+                                  backgroundColor: '#fef3c7',
+                                  color: '#b45309',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Sch {med.scheduleCategory}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                            {med.genericName} • {med.dosageForm} ({med.strength})
+                          </div>
+                        </div>
+
+                        <div style={{ textAlign: 'right' }}>
+                          <span
+                            style={{
+                              fontSize: '12px',
+                              backgroundColor: '#eff6ff',
+                              color: '#2563eb',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontWeight: 600,
+                            }}
+                          >
+                            + Select FEFO
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Cart Table */}
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+              }}
+            >
+              {cartItems.length === 0 ? (
+                <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '12px' }}>🛒</div>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#0f172a', margin: '0 0 6px 0' }}>
+                    Cart is empty
+                  </h3>
+                  <p style={{ fontSize: '13px', margin: 0 }}>
+                    Type a medicine name in the search bar above or scan a barcode to add items.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                    <thead>
+                      <tr
+                        style={{
+                          borderBottom: '1px solid #e2e8f0',
+                          backgroundColor: '#f8fafc',
+                          color: '#475569',
+                          fontWeight: 600,
+                          fontSize: '11px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        <th style={{ padding: '12px 14px' }}>Medicine Details</th>
+                        <th style={{ padding: '12px 14px' }}>Batch (FEFO)</th>
+                        <th style={{ padding: '12px 14px' }}>Unit Price</th>
+                        <th style={{ padding: '12px 14px' }}>Quantity</th>
+                        <th style={{ padding: '12px 14px' }}>GST %</th>
+                        <th style={{ padding: '12px 14px' }}>Line Total</th>
+                        <th style={{ padding: '12px 14px', textAlign: 'right' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cartItems.map((item, idx) => {
+                        const unitPrice = calculateUnitPrice(
+                          item.selectedBatch.mrpPaise,
+                          item.medicine.stripSize || 1
+                        );
+                        const grossLine = unitPrice * item.quantityUnits;
+
+                        return (
+                          <tr key={`${item.medicine.id}-${item.selectedBatch.id}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '12px 14px' }}>
+                              <div style={{ fontWeight: 600, color: '#0f172a' }}>{item.medicine.brandName}</div>
+                              <div style={{ fontSize: '11px', color: '#64748b' }}>{item.medicine.genericName}</div>
+                            </td>
+
+                            <td style={{ padding: '12px 14px' }}>
+                              <select
+                                value={item.selectedBatch.id}
+                                onChange={(e) => updateCartItemBatch(idx, e.target.value)}
+                                style={{
+                                  padding: '5px 8px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  fontSize: '12px',
+                                  backgroundColor: '#ffffff',
+                                }}
+                              >
+                                {item.availableBatches.map((b) => (
+                                  <option key={b.id} value={b.id}>
+                                    {b.batchNumber} (Exp: {b.expiryDate}, Stock: {b.stockUnits})
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+
+                            <td style={{ padding: '12px 14px', color: '#334155' }}>
+                              {formatPaiseToINR(unitPrice)}
+                            </td>
+
+                            <td style={{ padding: '12px 14px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => updateCartItemQuantity(idx, item.quantityUnits - 1)}
+                                  style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #cbd5e1',
+                                    background: '#f8fafc',
+                                    cursor: 'pointer',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  -
+                                </button>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max={item.selectedBatch.stockUnits}
+                                  value={item.quantityUnits}
+                                  onChange={(e) =>
+                                    updateCartItemQuantity(idx, parseInt(e.target.value, 10) || 1)
+                                  }
+                                  style={{
+                                    width: '48px',
+                                    padding: '4px',
+                                    textAlign: 'center',
+                                    borderRadius: '4px',
+                                    border: '1px solid #cbd5e1',
+                                    fontSize: '13px',
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => updateCartItemQuantity(idx, item.quantityUnits + 1)}
+                                  style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #cbd5e1',
+                                    background: '#f8fafc',
+                                    cursor: 'pointer',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </td>
+
+                            <td style={{ padding: '12px 14px', color: '#64748b' }}>
+                              {((item.medicine.gstRateBps || 0) / 100).toFixed(0)}%
+                            </td>
+
+                            <td style={{ padding: '12px 14px', fontWeight: 600, color: '#0f172a' }}>
+                              {formatPaiseToINR(grossLine)}
+                            </td>
+
+                            <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                              <button
+                                type="button"
+                                onClick={() => removeCartItem(idx)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#ef4444',
+                                  cursor: 'pointer',
+                                  fontSize: '16px',
+                                }}
+                                title="Remove item"
+                              >
+                                ✕
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Prescriber & Customer Card */}
+            <div
+              style={{
+                marginTop: '16px',
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                padding: '16px 20px',
+              }}
+            >
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>
+                Customer & Prescribing Doctor Details
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    Customer Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Anand Kumar"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '13px',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    Customer Phone
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. 9876543210"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '13px',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    Customer State (GST)
+                  </label>
+                  <select
+                    value={customerStateCode}
+                    onChange={(e) => setCustomerStateCode(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '13px',
+                      backgroundColor: '#ffffff',
+                    }}
+                  >
+                    <option value="29">29 - Karnataka (Intra-state CGST+SGST)</option>
+                    <option value="27">27 - Maharashtra (Inter-state IGST)</option>
+                    <option value="33">33 - Tamil Nadu (Inter-state IGST)</option>
+                    <option value="07">07 - Delhi (Inter-state IGST)</option>
+                    <option value="36">36 - Telangana (Inter-state IGST)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    Prescribing Doctor
+                  </label>
+                  <select
+                    value={selectedDoctorId}
+                    onChange={(e) => setSelectedDoctorId(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '13px',
+                      backgroundColor: '#ffffff',
+                    }}
+                  >
+                    <option value="">-- Select Prescriber --</option>
+                    {doctors.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        Dr. {d.name} ({d.registrationNumber})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    Prescription Number
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. RX-2026-904"
+                    value={prescriptionNumber}
+                    onChange={(e) => setPrescriptionNumber(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '13px',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Live Billing Summary & Checkout */}
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '12px',
+              padding: '20px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+              position: 'sticky',
+              top: '80px',
+            }}
+          >
+            <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>
+              Billing Summary
+            </div>
+
+            {quoteLoading ? (
+              <div style={{ padding: '30px 0', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                Recalculating quote...
+              </div>
+            ) : quoteError ? (
+              <div
+                style={{
+                  padding: '12px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  color: '#b91c1c',
+                  fontSize: '12px',
+                  marginBottom: '16px',
+                }}
+              >
+                {quoteError}
+              </div>
+            ) : !quote ? (
+              <div style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center', padding: '30px 0' }}>
+                Add items to see invoice quote.
+              </div>
+            ) : (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', backgroundColor: '#f8fafc', padding: '8px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>Cart Discount (%)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={overallDiscountBps / 100}
+                    onChange={(e) => setOverallDiscountBps(Math.round(parseFloat(e.target.value || '0') * 100))}
+                    style={{ width: '64px', padding: '4px 6px', fontSize: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', textAlign: 'right' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#475569' }}>
+                  <span>Gross Total</span>
+                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{formatPaiseToINR(quote.grossTotalPaise)}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#475569' }}>
+                  <span>Discount</span>
+                  <span style={{ fontWeight: 600, color: '#059669' }}>- {formatPaiseToINR(quote.totalDiscountPaise)}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#475569' }}>
+                  <span>Taxable Subtotal</span>
+                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{formatPaiseToINR(quote.taxableTotalPaise)}</span>
+                </div>
+
+                {quote.isInterState ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#475569' }}>
+                    <span>IGST</span>
+                    <span style={{ fontWeight: 600, color: '#0f172a' }}>{formatPaiseToINR(quote.igstTotalPaise)}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#475569' }}>
+                      <span>CGST</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{formatPaiseToINR(quote.cgstTotalPaise)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#475569' }}>
+                      <span>SGST</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{formatPaiseToINR(quote.sgstTotalPaise)}</span>
+                    </div>
+                  </>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '13px', color: '#475569' }}>
+                  <span>Round-off Adjustment</span>
+                  <span style={{ fontWeight: 600, color: quote.roundOffPaise < 0 ? '#ef4444' : '#64748b' }}>
+                    {quote.roundOffPaise >= 0 ? '+' : ''}{formatPaiseToINR(quote.roundOffPaise)}
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    borderTop: '2px solid #e2e8f0',
+                    paddingTop: '12px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'baseline',
+                    marginBottom: '20px',
+                  }}
+                >
+                  <span style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Net Payable</span>
+                  <span style={{ fontSize: '24px', fontWeight: 800, color: '#2563eb' }}>
+                    {formatPaiseToINR(quote.netPayablePaise)}
+                  </span>
+                </div>
+
+                {/* GST Slab Breakdown */}
+                {quote.taxSlabs.length > 0 && (
+                  <div
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      padding: '10px 12px',
+                      marginBottom: '20px',
+                    }}
+                  >
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>
+                      GST Slabs
+                    </div>
+                    {quote.taxSlabs.map((s) => (
+                      <div
+                        key={s.gstRateBps}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '11px',
+                          color: '#475569',
+                          marginBottom: '3px',
+                        }}
+                      >
+                        <span>{(s.gstRateBps / 100).toFixed(0)}% Slab (Taxable: {formatPaiseToINR(s.taxablePaise)})</span>
+                        <span style={{ fontWeight: 600 }}>{formatPaiseToINR(s.totalTaxPaise)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={openPaymentModal}
+                  id="pos-proceed-payment-btn"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(37,99,235,0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <span>Collect Payment (F4)</span>
+                  <span>→</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Split Payment Modal (Prompt 14) */}
+      {isPaymentModalOpen && quote && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: '16px',
+          }}
+          onClick={() => setIsPaymentModalOpen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '520px',
+              padding: '24px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+              border: '1px solid #e2e8f0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                  Collect Payment & Finalize Invoice
+                </h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>
+                  Split payment modes (Cash, UPI, Card) supported
+                </p>
+              </div>
+              <button
+                onClick={() => setIsPaymentModalOpen(false)}
+                style={{ background: 'none', border: 'none', fontSize: '20px', color: '#94a3b8', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {paymentError && (
+              <div
+                style={{
+                  padding: '10px 14px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  color: '#b91c1c',
+                  fontSize: '13px',
+                  marginBottom: '16px',
+                }}
+              >
+                {paymentError}
+              </div>
+            )}
+
+            {/* Total Due Callout */}
+            <div
+              style={{
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                padding: '14px 18px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>TOTAL NET PAYABLE</div>
+                <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a' }}>
+                  {formatPaiseToINR(quote.netPayablePaise)}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '12px', color: '#64748b' }}>Allocated</div>
+                <div
+                  style={{
+                    fontSize: '16px',
+                    fontWeight: 700,
+                    color: cashPaise + upiPaise + cardPaise === quote.netPayablePaise ? '#059669' : '#dc2626',
+                  }}
+                >
+                  {formatPaiseToINR(cashPaise + upiPaise + cardPaise)}
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Modes Inputs */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  💵 Cash Amount (₹)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={(cashPaise / 100).toString()}
+                  onChange={(e) => setCashPaise(Math.max(0, Math.round(parseFloat(e.target.value || '0') * 100)))}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+
+              {cashPaise > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                      Customer Tendered (₹)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 500"
+                      value={cashTenderedRupees}
+                      onChange={(e) => setCashTenderedRupees(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '14px',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                      Change to Return
+                    </label>
+                    <div
+                      style={{
+                        padding: '8px 12px',
+                        backgroundColor: '#f1f5f9',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        color: '#059669',
+                      }}
+                    >
+                      {formatPaiseToINR(cashChangePaise)}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  📱 UPI / QR Code Amount (₹)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={(upiPaise / 100).toString()}
+                  onChange={(e) => setUpiPaise(Math.max(0, Math.round(parseFloat(e.target.value || '0') * 100)))}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  💳 Card / POS Swipe Amount (₹)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={(cardPaise / 100).toString()}
+                  onChange={(e) => setCardPaise(Math.max(0, Math.round(parseFloat(e.target.value || '0') * 100)))}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={() => setIsPaymentModalOpen(false)}
+                style={{
+                  padding: '10px 18px',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#475569',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleFinalizeBill}
+                disabled={paymentSubmitting || cashPaise + upiPaise + cardPaise !== quote.netPayablePaise}
+                id="pos-finalize-submit-btn"
+                style={{
+                  padding: '10px 22px',
+                  backgroundColor:
+                    cashPaise + upiPaise + cardPaise === quote.netPayablePaise ? '#059669' : '#94a3b8',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  cursor:
+                    paymentSubmitting || cashPaise + upiPaise + cardPaise !== quote.netPayablePaise
+                      ? 'not-allowed'
+                      : 'pointer',
+                }}
+              >
+                {paymentSubmitting ? 'Finalizing Invoice...' : 'Finalize & Generate Invoice (F10)'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Receipt Modal (Prompt 15: 80mm & A4 Preview) */}
+      {isReceiptModalOpen && finalizedInvoice && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: '16px',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '460px',
+              padding: '24px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+              border: '1px solid #e2e8f0',
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '36px', marginBottom: '8px' }}>✅</div>
+              <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                Bill Finalized Successfully!
+              </h2>
+              <div
+                style={{
+                  display: 'inline-block',
+                  backgroundColor: '#ecfdf5',
+                  color: '#059669',
+                  padding: '4px 12px',
+                  borderRadius: '6px',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  marginTop: '8px',
+                  fontFamily: 'monospace',
+                }}
+              >
+                {finalizedInvoice.invoiceNumber}
+              </div>
+            </div>
+
+            {/* 80mm Compact Thermal Receipt Layout Preview */}
+            <div
+              id="thermal-receipt-preview"
+              style={{
+                border: '1px dashed #cbd5e1',
+                padding: '16px',
+                borderRadius: '8px',
+                backgroundColor: '#f8fafc',
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                marginBottom: '20px',
+              }}
+            >
+              <div style={{ textAlign: 'center', fontWeight: 700, fontSize: '14px' }}>
+                {activeStore?.storeName || 'PULSECLINIC PHARMACY'}
+              </div>
+              <div style={{ textAlign: 'center', fontSize: '11px', color: '#64748b' }}>
+                GSTIN: 29AABCU9603R1ZM • Reg: DL-2024-KA-8492
+              </div>
+              <div style={{ borderBottom: '1px dashed #94a3b8', margin: '8px 0' }} />
+
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Invoice: {finalizedInvoice.invoiceNumber}</span>
+                <span>{new Date().toLocaleDateString('en-IN')}</span>
+              </div>
+              {finalizedInvoice.customer?.name && (
+                <div>Customer: {finalizedInvoice.customer.name}</div>
+              )}
+              {finalizedInvoice.doctorName && (
+                <div>Prescriber: Dr. {finalizedInvoice.doctorName}</div>
+              )}
+              <div style={{ borderBottom: '1px dashed #94a3b8', margin: '8px 0' }} />
+
+              {/* Line Items */}
+              {finalizedInvoice.items?.map((it: CalculatedLineItem) => (
+                <div key={`${it.medicineId}-${it.batchId}`} style={{ marginBottom: '4px' }}>
+                  <div style={{ fontWeight: 600 }}>{it.medicineName}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                    <span>
+                      {it.quantityUnits} x {formatPaiseToINR(it.unitPricePaise)}
+                    </span>
+                    <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                      {formatPaiseToINR(it.lineTotalPaise)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              <div style={{ borderBottom: '1px dashed #94a3b8', margin: '8px 0' }} />
+
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Subtotal:</span>
+                <span>{formatPaiseToINR(finalizedInvoice.taxableTotalPaise)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Total Tax (GST):</span>
+                <span>{formatPaiseToINR(finalizedInvoice.taxTotalPaise)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '14px', marginTop: '4px' }}>
+                <span>GRAND TOTAL:</span>
+                <span>{formatPaiseToINR(finalizedInvoice.netPayablePaise)}</span>
+              </div>
+
+              <div style={{ borderBottom: '1px dashed #94a3b8', margin: '8px 0' }} />
+              <div style={{ textAlign: 'center', fontSize: '11px', color: '#64748b' }}>
+                Thank You For Your Visit! Get Well Soon.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>🖨️</span> Print Receipt
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsReceiptModalOpen(false)}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                Start New Bill (Esc)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </DashboardLayout>
+  );
+}

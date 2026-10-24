@@ -1,0 +1,17 @@
+{
+  "backupId": "pulseclinic_backup_pulseclinic-main_2026-10-24T14-44-04-230Z",
+  "storeId": "pulseclinic-main",
+  "timestamp": "2026-10-24T14:44:06.645Z",
+  "totalDocuments": 22,
+  "collections": {
+    "medicines": 2,
+    "batches": 2,
+    "invoices": 3,
+    "stockLedger": 6,
+    "expenses": 1,
+    "auditLogs": 6,
+    "notifications": 2,
+    "purchaseOrders": 0
+  },
+  "sha256Checksum": "da822fdf1853b6f5092915b657d7ac1bca283481afaabe13673efc822239e3aa"
+}

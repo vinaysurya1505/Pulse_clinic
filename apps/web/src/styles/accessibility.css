@@ -1,0 +1,110 @@
+/**
+ * Accessibility (WCAG 2.1 AA) and Responsive UX Stylesheet
+ * PulseClinic Pharmacy Management System (Prompt 26)
+ */
+
+/* 1. Visually Hidden Screen Reader Only Class */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* 2. Skip to Main Content Link */
+.skip-to-content {
+  position: absolute;
+  top: -9999px;
+  left: 20px;
+  background: var(--color-primary, #2563eb);
+  color: #ffffff !important;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 14px;
+  z-index: 9999;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: top 0.15s ease;
+}
+
+.skip-to-content:focus {
+  top: 16px;
+  outline: 3px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+/* 3. Universal High-Visibility Focus Rings */
+:focus-visible {
+  outline: 2px solid var(--color-primary, #2563eb) !important;
+  outline-offset: 2px !important;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-primary, #2563eb) !important;
+  outline-offset: 2px !important;
+}
+
+/* 4. Minimum Accessible Touch Targets on Mobile/Tablet */
+@media (max-width: 768px) {
+  button,
+  input[type="button"],
+  input[type="submit"],
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* 5. Prefers-Reduced-Motion for Motion Sensitivity */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 6. High Contrast & Text Legibility */
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 7. Live Announcement Region */
+.a11y-live-region {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* 8. Keyboard Shortcut Help Badge */
+.kbd-shortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.06);
+}

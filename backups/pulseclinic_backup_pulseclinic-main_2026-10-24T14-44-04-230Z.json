@@ -1,0 +1,483 @@
+{
+  "medicines": [
+    {
+      "id": "f12qnsa5rAPJMhBbltMa",
+      "brandName": "Dolo 650mg",
+      "genericName": "Paracetamol",
+      "category": "Analgesics & Antipyretics",
+      "dosageForm": "TABLET",
+      "strength": "650mg",
+      "manufacturer": "Micro Labs Ltd",
+      "hsnCode": "30049060",
+      "gstRateBps": 1200,
+      "baseUnit": "TABLET",
+      "stripSize": 15,
+      "allowLooseSales": true,
+      "scheduleCategory": "NONE",
+      "rackLocation": "Rack A-1",
+      "barcode": "8901234567890",
+      "storeId": "pulseclinic-main",
+      "isArchived": false,
+      "createdAt": "2026-10-24T11:40:56.797Z",
+      "updatedAt": "2026-10-24T11:40:56.797Z"
+    },
+    {
+      "id": "lgt9KSdUTdZAfUGCqUL8",
+      "brandName": "Augmentin 625 Duo",
+      "genericName": "Amoxicillin + Potassium Clavulanate",
+      "category": "Antibiotics",
+      "dosageForm": "TABLET",
+      "strength": "625mg",
+      "manufacturer": "GSK Pharmaceuticals",
+      "hsnCode": "30041010",
+      "gstRateBps": 1200,
+      "baseUnit": "TABLET",
+      "stripSize": 10,
+      "allowLooseSales": false,
+      "scheduleCategory": "H",
+      "rackLocation": "Rack B-3",
+      "barcode": "8901234567891",
+      "storeId": "pulseclinic-main",
+      "isArchived": false,
+      "createdAt": "2026-10-24T11:42:40.700Z",
+      "updatedAt": "2026-10-24T11:42:40.700Z"
+    }
+  ],
+  "batches": [
+    {
+      "id": "1BwQIxpueTY323XY3NVA",
+      "storeId": "pulseclinic-main",
+      "medicineId": "lgt9KSdUTdZAfUGCqUL8",
+      "medicineBrandName": "Augmentin 625 Duo",
+      "medicineGenericName": "Amoxicillin + Potassium Clavulanate",
+      "dosageForm": "TABLET",
+      "strength": "625mg",
+      "batchNumber": "AG24B99",
+      "expiryDate": "2027-12-31",
+      "mrpPaise": 20000,
+      "costPricePaise": 0,
+      "status": "ACTIVE",
+      "supplierId": "sup-direct",
+      "supplierName": "",
+      "rackLocation": "Rack B-3",
+      "createdAt": "2026-10-24T11:42:40.760Z",
+      "stockUnits": 90,
+      "updatedAt": "2026-10-24T12:53:55.252Z"
+    },
+    {
+      "id": "ORHD6A8lwlgdlFfhhdlA",
+      "storeId": "pulseclinic-main",
+      "medicineId": "f12qnsa5rAPJMhBbltMa",
+      "medicineBrandName": "Dolo 650mg",
+      "medicineGenericName": "Paracetamol",
+      "dosageForm": "TABLET",
+      "strength": "650mg",
+      "batchNumber": "DL24A01",
+      "expiryDate": "2027-06-30",
+      "mrpPaise": 3000,
+      "costPricePaise": 0,
+      "status": "ACTIVE",
+      "supplierId": "sup-direct",
+      "supplierName": "",
+      "rackLocation": "Rack A-1",
+      "createdAt": "2026-10-24T11:42:40.470Z",
+      "stockUnits": 135,
+      "updatedAt": "2026-10-24T14:15:49.957Z"
+    }
+  ],
+  "invoices": [
+    {
+      "id": "J3Dto02QPCPg1XjwYHWQ",
+      "storeId": "pulseclinic-main",
+      "invoiceNumber": "INV-202610-000002",
+      "calculationVersion": 1,
+      "items": [
+        {
+          "medicineId": "f12qnsa5rAPJMhBbltMa",
+          "batchId": "ORHD6A8lwlgdlFfhhdlA",
+          "medicineName": "Dolo 650mg",
+          "hsnCode": "30049060",
+          "batchNumber": "DL24A01",
+          "expiryDate": "2027-06-30",
+          "quantityUnits": 15,
+          "unitPricePaise": 200,
+          "grossLinePaise": 3000,
+          "discountBps": 0,
+          "discountPaise": 0,
+          "taxablePaise": 3000,
+          "gstRateBps": 1200,
+          "cgstRateBps": 600,
+          "sgstRateBps": 600,
+          "igstRateBps": 0,
+          "cgstPaise": 180,
+          "sgstPaise": 180,
+          "igstPaise": 0,
+          "lineTaxPaise": 360,
+          "lineTotalPaise": 3360
+        }
+      ],
+      "grossTotalPaise": 3000,
+      "totalDiscountPaise": 0,
+      "taxableTotalPaise": 3000,
+      "cgstTotalPaise": 180,
+      "sgstTotalPaise": 180,
+      "igstTotalPaise": 0,
+      "taxTotalPaise": 360,
+      "grandTotalPaise": 3360,
+      "roundOffPaise": 40,
+      "netPayablePaise": 3400,
+      "paymentModes": [
+        {
+          "mode": "CASH",
+          "amountPaise": 3400
+        }
+      ],
+      "customer": {
+        "name": "Vikram Rao",
+        "phone": "9845012345",
+        "stateCode": "29"
+      },
+      "hasScheduleH": false,
+      "billerUid": "IwabTE3w8VVYRaQWsQzAzAMBX7z1",
+      "idempotencyKey": "pos-1792846772526-x88f0",
+      "createdAt": "2026-10-24T12:59:32.797Z",
+      "status": "REFUNDED",
+      "updatedAt": "2026-10-24T13:39:44.631Z"
+    },
+    {
+      "id": "QK8Ge4pYcNrX96YdPxG4",
+      "storeId": "pulseclinic-main",
+      "invoiceNumber": "INV-202610-000001",
+      "status": "FINALIZED",
+      "calculationVersion": 1,
+      "items": [
+        {
+          "medicineId": "lgt9KSdUTdZAfUGCqUL8",
+          "batchId": "1BwQIxpueTY323XY3NVA",
+          "medicineName": "Augmentin 625 Duo",
+          "hsnCode": "30041010",
+          "batchNumber": "AG24B99",
+          "expiryDate": "2027-12-31",
+          "quantityUnits": 10,
+          "unitPricePaise": 2000,
+          "grossLinePaise": 20000,
+          "discountBps": 0,
+          "discountPaise": 0,
+          "taxablePaise": 20000,
+          "gstRateBps": 1200,
+          "cgstRateBps": 600,
+          "sgstRateBps": 600,
+          "igstRateBps": 0,
+          "cgstPaise": 1200,
+          "sgstPaise": 1200,
+          "igstPaise": 0,
+          "lineTaxPaise": 2400,
+          "lineTotalPaise": 22400
+        }
+      ],
+      "grossTotalPaise": 20000,
+      "totalDiscountPaise": 0,
+      "taxableTotalPaise": 20000,
+      "cgstTotalPaise": 1200,
+      "sgstTotalPaise": 1200,
+      "igstTotalPaise": 0,
+      "taxTotalPaise": 2400,
+      "grandTotalPaise": 22400,
+      "roundOffPaise": 0,
+      "netPayablePaise": 22400,
+      "paymentModes": [
+        {
+          "mode": "CASH",
+          "amountPaise": 22400
+        }
+      ],
+      "customer": {
+        "name": "Rajesh Kumar",
+        "phone": "9876543210",
+        "stateCode": "29"
+      },
+      "hasScheduleH": true,
+      "billerUid": "test-biller",
+      "createdAt": "2026-10-24T12:53:55.252Z",
+      "updatedAt": "2026-10-24T12:53:55.252Z"
+    },
+    {
+      "id": "xTXAQ6ScxTJ2pf86QEC8",
+      "storeId": "pulseclinic-main",
+      "invoiceNumber": "INV-202610-000003",
+      "status": "FINALIZED",
+      "calculationVersion": 1,
+      "items": [
+        {
+          "medicineId": "f12qnsa5rAPJMhBbltMa",
+          "batchId": "ORHD6A8lwlgdlFfhhdlA",
+          "medicineName": "Dolo 650mg",
+          "hsnCode": "30049060",
+          "batchNumber": "DL24A01",
+          "expiryDate": "2027-06-30",
+          "quantityUnits": 15,
+          "unitPricePaise": 200,
+          "grossLinePaise": 3000,
+          "discountBps": 0,
+          "discountPaise": 0,
+          "taxablePaise": 3000,
+          "gstRateBps": 1200,
+          "cgstRateBps": 600,
+          "sgstRateBps": 600,
+          "igstRateBps": 0,
+          "cgstPaise": 180,
+          "sgstPaise": 180,
+          "igstPaise": 0,
+          "lineTaxPaise": 360,
+          "lineTotalPaise": 3360
+        }
+      ],
+      "grossTotalPaise": 3000,
+      "totalDiscountPaise": 0,
+      "taxableTotalPaise": 3000,
+      "cgstTotalPaise": 180,
+      "sgstTotalPaise": 180,
+      "igstTotalPaise": 0,
+      "taxTotalPaise": 360,
+      "grandTotalPaise": 3360,
+      "roundOffPaise": 40,
+      "netPayablePaise": 3400,
+      "paymentModes": [
+        {
+          "mode": "CASH",
+          "amountPaise": 3400
+        }
+      ],
+      "customer": {
+        "stateCode": "29"
+      },
+      "hasScheduleH": false,
+      "billerUid": "IwabTE3w8VVYRaQWsQzAzAMBX7z1",
+      "idempotencyKey": "pos-1792851349371-hks1p",
+      "createdAt": "2026-10-24T14:15:49.957Z",
+      "updatedAt": "2026-10-24T14:15:49.957Z"
+    }
+  ],
+  "stockLedger": [
+    {
+      "id": "CXUlbdBVAzum7H63yJKi",
+      "storeId": "pulseclinic-main",
+      "batchId": "1BwQIxpueTY323XY3NVA",
+      "medicineId": "lgt9KSdUTdZAfUGCqUL8",
+      "type": "OUT",
+      "reason": "SALE",
+      "changeUnits": -10,
+      "stockAfterUnits": 90,
+      "referenceId": "INV-202610-000001",
+      "recordedBy": "test-biller",
+      "createdAt": "2026-10-24T12:53:55.252Z"
+    },
+    {
+      "id": "JxY0hKsZrE8TXUMTNlu0",
+      "storeId": "pulseclinic-main",
+      "batchId": "ORHD6A8lwlgdlFfhhdlA",
+      "medicineId": "f12qnsa5rAPJMhBbltMa",
+      "type": "OUT",
+      "reason": "SALE",
+      "changeUnits": -15,
+      "stockAfterUnits": 135,
+      "referenceId": "INV-202610-000003",
+      "recordedBy": "IwabTE3w8VVYRaQWsQzAzAMBX7z1",
+      "createdAt": "2026-10-24T14:15:49.957Z"
+    },
+    {
+      "id": "U2ecBwEjrhvHh6wV7WpG",
+      "storeId": "pulseclinic-main",
+      "batchId": "1BwQIxpueTY323XY3NVA",
+      "medicineId": "lgt9KSdUTdZAfUGCqUL8",
+      "medicineBrandName": "Augmentin 625 Duo",
+      "batchNumber": "AG24B99",
+      "movementType": "INITIAL_STOCK",
+      "changeUnits": 100,
+      "balanceUnitsBefore": 0,
+      "balanceUnitsAfter": 100,
+      "reason": "Initial stock on batch registration",
+      "performedBy": "admin",
+      "performedByName": "Pharmacist",
+      "createdAt": "2026-10-24T11:42:40.760Z"
+    },
+    {
+      "id": "XQkisma5UefcMUBfifoV",
+      "storeId": "pulseclinic-main",
+      "batchId": "ORHD6A8lwlgdlFfhhdlA",
+      "medicineId": "f12qnsa5rAPJMhBbltMa",
+      "type": "IN",
+      "reason": "SALE_RETURN",
+      "changeUnits": 15,
+      "stockAfterUnits": 150,
+      "referenceId": "INV-202610-000002",
+      "recordedBy": "test-operator",
+      "createdAt": "2026-10-24T13:39:44.631Z"
+    },
+    {
+      "id": "f5gvcmzjdaUgtFOioZV2",
+      "storeId": "pulseclinic-main",
+      "batchId": "ORHD6A8lwlgdlFfhhdlA",
+      "medicineId": "f12qnsa5rAPJMhBbltMa",
+      "medicineBrandName": "Dolo 650mg",
+      "batchNumber": "DL24A01",
+      "movementType": "INITIAL_STOCK",
+      "changeUnits": 150,
+      "balanceUnitsBefore": 0,
+      "balanceUnitsAfter": 150,
+      "reason": "Initial stock on batch registration",
+      "performedBy": "admin",
+      "performedByName": "Pharmacist",
+      "createdAt": "2026-10-24T11:42:40.470Z"
+    },
+    {
+      "id": "lHdjlMceCYLrBduZTyWb",
+      "storeId": "pulseclinic-main",
+      "batchId": "ORHD6A8lwlgdlFfhhdlA",
+      "medicineId": "f12qnsa5rAPJMhBbltMa",
+      "type": "OUT",
+      "reason": "SALE",
+      "changeUnits": -15,
+      "stockAfterUnits": 135,
+      "referenceId": "INV-202610-000002",
+      "recordedBy": "IwabTE3w8VVYRaQWsQzAzAMBX7z1",
+      "createdAt": "2026-10-24T12:59:32.797Z"
+    }
+  ],
+  "expenses": [
+    {
+      "id": "z3QdFSW5KsY6yomq9GRz",
+      "storeId": "pulseclinic-main",
+      "category": "PETTY_CASH",
+      "amountPaise": 15000,
+      "paymentMode": "CASH",
+      "description": "Purchased carry bags and tea",
+      "paidByUid": "IwabTE3w8VVYRaQWsQzAzAMBX7z1",
+      "createdAt": "2026-10-24T13:46:52.751Z",
+      "updatedAt": "2026-10-24T13:46:52.751Z"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "45Os5ffFZtYRESXgpWFL",
+      "storeId": "pulseclinic-main",
+      "action": "INVOICE_REFUNDED",
+      "actorUid": "usr_owner_super_admin",
+      "summary": "Approved and executed refund for INV-202610-000001 (₹36.00)",
+      "entityType": "INVOICE",
+      "entityId": "inv_001",
+      "payload": {
+        "invoiceNumber": "INV-202610-000001",
+        "refundAmountPaise": 3600,
+        "reason": "Customer return - sealed box",
+        "refundModes": [
+          "CASH"
+        ]
+      },
+      "createdAt": "2026-10-24T14:22:12.540Z"
+    },
+    {
+      "id": "NZRIs8YRMgKqlZLaliJl",
+      "storeId": "pulseclinic-main",
+      "action": "BILL_FINALIZED",
+      "actorUid": "usr_cashier_01",
+      "summary": "Finalized bill INV-202610-000002 for ₹40.40",
+      "entityType": "INVOICE",
+      "entityId": "inv_002",
+      "payload": {
+        "invoiceNumber": "INV-202610-000002",
+        "customerName": "Vikram Rao",
+        "itemCount": 2,
+        "grandTotalPaise": 4040,
+        "paymentModes": [
+          "CASH"
+        ]
+      },
+      "createdAt": "2026-10-24T14:22:12.368Z"
+    },
+    {
+      "id": "P6zZtcaXXFd7feczvQ0A",
+      "storeId": "pulseclinic-main",
+      "action": "AUTH_LOGIN",
+      "actorUid": "usr_owner_super_admin",
+      "summary": "Store Owner authenticated into PulseClinic terminal",
+      "payload": {
+        "clientIp": "127.0.0.1",
+        "userAgent": "Chrome/120.0.0 (Windows NT 10.0)",
+        "email": "owner@pulseclinic.in"
+      },
+      "createdAt": "2026-10-24T14:22:11.094Z"
+    },
+    {
+      "id": "RJSB3NY3STrOvKCrxTRJ",
+      "storeId": "pulseclinic-main",
+      "action": "AUTH_LOGIN",
+      "actorUid": "usr_owner_super_admin",
+      "summary": "Store Owner authenticated into PulseClinic terminal",
+      "payload": {
+        "clientIp": "127.0.0.1",
+        "userAgent": "Chrome/120.0.0 (Windows NT 10.0)",
+        "email": "owner@pulseclinic.in"
+      },
+      "createdAt": "2026-10-24T14:22:42.175Z"
+    },
+    {
+      "id": "UfddG023oBrXpUpPJcXQ",
+      "storeId": "pulseclinic-main",
+      "action": "BILL_FINALIZED",
+      "actorUid": "usr_cashier_01",
+      "summary": "Finalized bill INV-202610-000002 for ₹40.40",
+      "entityType": "INVOICE",
+      "entityId": "inv_002",
+      "payload": {
+        "invoiceNumber": "INV-202610-000002",
+        "customerName": "Vikram Rao",
+        "itemCount": 2,
+        "grandTotalPaise": 4040,
+        "paymentModes": [
+          "CASH"
+        ]
+      },
+      "createdAt": "2026-10-24T14:22:43.525Z"
+    },
+    {
+      "id": "UxlNNLkR7DEIv48pVVXM",
+      "storeId": "pulseclinic-main",
+      "action": "INVOICE_REFUNDED",
+      "actorUid": "usr_owner_super_admin",
+      "summary": "Approved and executed refund for INV-202610-000001 (₹36.00)",
+      "entityType": "INVOICE",
+      "entityId": "inv_001",
+      "payload": {
+        "invoiceNumber": "INV-202610-000001",
+        "refundAmountPaise": 3600,
+        "reason": "Customer return - sealed box",
+        "refundModes": [
+          "CASH"
+        ]
+      },
+      "createdAt": "2026-10-24T14:22:43.636Z"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "alert_sample_low_stock",
+      "storeId": "pulseclinic-main",
+      "type": "LOW_STOCK",
+      "title": "Low Stock Alert: Paracetamol 500mg",
+      "message": "Batch BATCH-2024-001 has only 12 units remaining. Reorder threshold reached.",
+      "isRead": false,
+      "createdAt": "2026-10-24T14:22:43.750Z"
+    },
+    {
+      "id": "alert_sample_near_expiry",
+      "storeId": "pulseclinic-main",
+      "type": "NEAR_EXPIRY",
+      "title": "Near-Expiry Warning: Amoxicillin 250mg",
+      "message": "Batch BATCH-AMX-002 expires on 2026-11-15 (within 22 days). Prioritize FEFO dispensing.",
+      "createdAt": "2026-10-24T14:22:43.884Z",
+      "isRead": true
+    }
+  ],
+  "purchaseOrders": []
+}
