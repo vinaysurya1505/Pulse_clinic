@@ -32,9 +32,19 @@ export default function NewBillingPage() {
   // Search & Catalogue
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<MedicineMaster[]>([]);
+  const [catalogueMedicines, setCatalogueMedicines] = useState<MedicineMaster[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [catalogueLoading, setCatalogueLoading] = useState(false);
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [selectedResultIndex, setSelectedResultIndex] = useState(0);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  const displayedMedicines = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return catalogueMedicines;
+    }
+    return searchResults;
+  }, [searchQuery, catalogueMedicines, searchResults]);
 
   // Cart State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -77,6 +87,34 @@ export default function NewBillingPage() {
       .catch(() => {});
   }, [activeStore?.storeId]);
 
+  // Load full medicine catalogue for dropdown browsing
+  useEffect(() => {
+    if (!activeStore) return;
+    setCatalogueLoading(true);
+    apiGet<{ success: boolean; medicines: MedicineMaster[] }>(
+      '/inventory/medicines?limit=100',
+      activeStore.storeId
+    )
+      .then((res) => {
+        if (res.success) {
+          setCatalogueMedicines(res.medicines || []);
+        }
+      })
+      .catch((err) => console.error('Failed to load catalogue medicines:', err))
+      .finally(() => setCatalogueLoading(false));
+  }, [activeStore?.storeId]);
+
+  // Click outside to dismiss search/catalogue dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Keyboard navigation shortcuts (screen-map 3.1)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -113,9 +151,9 @@ export default function NewBillingPage() {
 
   // Medicine Search Debounced
   useEffect(() => {
-    if (!searchQuery.trim() || !activeStore) {
+    if (!activeStore) return;
+    if (!searchQuery.trim()) {
       setSearchResults([]);
-      setIsSearchDropdownOpen(false);
       return;
     }
 
@@ -123,7 +161,7 @@ export default function NewBillingPage() {
       setSearchLoading(true);
       try {
         const res = await apiGet<{ success: boolean; medicines: MedicineMaster[] }>(
-          `/inventory/medicines?query=${encodeURIComponent(searchQuery.trim())}&limit=10`,
+          `/inventory/medicines?query=${encodeURIComponent(searchQuery.trim())}&limit=20`,
           activeStore.storeId
         );
         if (res.success) {
@@ -142,10 +180,12 @@ export default function NewBillingPage() {
   }, [searchQuery, activeStore?.storeId]);
 
   // Add medicine to cart with automatic FEFO batch selection
-  const handleSelectMedicine = async (medicine: MedicineMaster) => {
+  const handleSelectMedicine = async (medicine: MedicineMaster, keepDropdownOpen = false) => {
     if (!activeStore) return;
-    setIsSearchDropdownOpen(false);
-    setSearchQuery('');
+    if (!keepDropdownOpen) {
+      setIsSearchDropdownOpen(false);
+      setSearchQuery('');
+    }
 
     // Fetch batches for this medicine using dedicated FEFO endpoint
     try {
@@ -518,7 +558,7 @@ export default function NewBillingPage() {
                 Schedule H / H1 / X Prescription Drug in Cart
               </div>
               <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px' }}>
-                CDSCO regulations mandate logging the prescribing medical practitioner and prescription number.
+                CDSCO regulations mandate selecting the registered prescribing medical practitioner.
               </div>
             </div>
           </div>
@@ -528,8 +568,8 @@ export default function NewBillingPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '20px', alignItems: 'start' }}>
           {/* Left Column: Medicine Search & Cart Table */}
           <div>
-            {/* Search Input Box */}
-            <div style={{ position: 'relative', marginBottom: '16px' }}>
+            {/* Search Input Box with Dropdown Toggle */}
+            <div ref={searchContainerRef} style={{ position: 'relative', marginBottom: '16px' }}>
               <input
                 ref={searchInputRef}
                 type="text"
@@ -537,28 +577,32 @@ export default function NewBillingPage() {
                 aria-expanded={isSearchDropdownOpen}
                 aria-autocomplete="list"
                 role="combobox"
-                placeholder="Scan barcode or type medicine brand / generic name (Press F2 or /)..."
+                placeholder="Scan barcode, type medicine name, or click Browse ▼..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchDropdownOpen(true)}
+                onClick={() => setIsSearchDropdownOpen(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearchDropdownOpen(true);
+                }}
                 id="pos-medicine-search-input"
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowDown') {
                     e.preventDefault();
-                    setSelectedResultIndex((prev) => Math.min(prev + 1, searchResults.length - 1));
+                    setSelectedResultIndex((prev) => Math.min(prev + 1, displayedMedicines.length - 1));
                   } else if (e.key === 'ArrowUp') {
                     e.preventDefault();
                     setSelectedResultIndex((prev) => Math.max(prev - 1, 0));
                   } else if (e.key === 'Enter') {
                     e.preventDefault();
-                    if (isSearchDropdownOpen && searchResults[selectedResultIndex]) {
-                      handleSelectMedicine(searchResults[selectedResultIndex]);
+                    if (isSearchDropdownOpen && displayedMedicines[selectedResultIndex]) {
+                      handleSelectMedicine(displayedMedicines[selectedResultIndex], false);
                     }
                   }
                 }}
                 style={{
                   width: '100%',
-                  padding: '12px 16px',
-                  paddingLeft: '40px',
+                  padding: '12px 125px 12px 42px',
                   borderRadius: '10px',
                   border: '2px solid #2563eb',
                   fontSize: '15px',
@@ -576,12 +620,43 @@ export default function NewBillingPage() {
                   transform: 'translateY(-50%)',
                   fontSize: '18px',
                   color: '#2563eb',
+                  pointerEvents: 'none',
                 }}
               >
                 🔍
               </span>
 
-              {/* Search Autocomplete Dropdown */}
+              {/* Dropdown Toggle Browse Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSearchDropdownOpen((prev) => !prev);
+                  searchInputRef.current?.focus();
+                }}
+                title="Browse and select medicines from dropdown"
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  backgroundColor: isSearchDropdownOpen ? '#eff6ff' : '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  color: '#2563eb',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  transition: 'background-color 0.15s ease',
+                }}
+              >
+                <span>{isSearchDropdownOpen ? '▲ Close' : '▼ Browse'}</span>
+              </button>
+
+              {/* Search & Catalogue Multi-Select Dropdown */}
               {isSearchDropdownOpen && (
                 <div
                   style={{
@@ -593,81 +668,157 @@ export default function NewBillingPage() {
                     backgroundColor: '#ffffff',
                     border: '1px solid #cbd5e1',
                     borderRadius: '10px',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.12)',
                     zIndex: 50,
-                    maxHeight: '360px',
+                    maxHeight: '400px',
                     overflowY: 'auto',
                   }}
                 >
-                  {searchLoading ? (
-                    <div style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
-                      Searching catalogue...
+                  {/* Sticky Dropdown Header */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 16px',
+                      backgroundColor: '#f8fafc',
+                      borderBottom: '1px solid #e2e8f0',
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 10,
+                    }}
+                  >
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>
+                      {searchQuery.trim()
+                        ? `Search Results (${displayedMedicines.length})`
+                        : `Catalogue Medicines (${displayedMedicines.length})`}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>
+                        Click <strong>+ Add</strong> to select multiple items
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsSearchDropdownOpen(false)}
+                        style={{
+                          background: '#e2e8f0',
+                          border: 'none',
+                          borderRadius: '4px',
+                          padding: '2px 8px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          color: '#475569',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Done ✕
+                      </button>
                     </div>
-                  ) : searchResults.length === 0 ? (
-                    <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
-                      No medicines found matching &quot;{searchQuery}&quot;
+                  </div>
+
+                  {searchLoading || catalogueLoading ? (
+                    <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                      Loading catalogue medicines...
+                    </div>
+                  ) : displayedMedicines.length === 0 ? (
+                    <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                      {searchQuery.trim()
+                        ? `No medicines found matching "${searchQuery}"`
+                        : 'No medicines found in store inventory.'}
                     </div>
                   ) : (
-                    searchResults.map((med, idx) => (
-                      <div
-                        key={med.id}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          handleSelectMedicine(med);
-                        }}
-                        onClick={() => handleSelectMedicine(med)}
-                        style={{
-                          padding: '12px 16px',
-                          borderBottom: '1px solid #f1f5f9',
-                          cursor: 'pointer',
-                          backgroundColor: idx === selectedResultIndex ? '#f8fafc' : '#ffffff',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          transition: 'background-color 0.1s ease',
-                        }}
-                        onMouseEnter={() => setSelectedResultIndex(idx)}
-                      >
-                        <div>
-                          <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '14px' }}>
-                            {med.brandName}
-                            {med.scheduleCategory && med.scheduleCategory !== 'NONE' && (
-                              <span
-                                style={{
-                                  marginLeft: '8px',
-                                  fontSize: '11px',
-                                  padding: '1px 5px',
-                                  borderRadius: '4px',
-                                  backgroundColor: '#fef3c7',
-                                  color: '#b45309',
-                                  fontWeight: 700,
-                                }}
-                              >
-                                Sch {med.scheduleCategory}
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                            {med.genericName} • {med.dosageForm} ({med.strength})
-                          </div>
-                        </div>
+                    displayedMedicines.map((med, idx) => {
+                      const inCartItem = cartItems.find((it) => it.medicine.id === med.id);
+                      const inCartUnits = inCartItem?.quantityUnits || 0;
 
-                        <div style={{ textAlign: 'right' }}>
-                          <span
-                            style={{
-                              fontSize: '12px',
-                              backgroundColor: '#eff6ff',
-                              color: '#2563eb',
-                              padding: '3px 8px',
-                              borderRadius: '6px',
-                              fontWeight: 600,
-                            }}
-                          >
-                            + Select FEFO
-                          </span>
+                      return (
+                        <div
+                          key={med.id}
+                          onClick={() => handleSelectMedicine(med, true)}
+                          style={{
+                            padding: '12px 16px',
+                            borderBottom: '1px solid #f1f5f9',
+                            cursor: 'pointer',
+                            backgroundColor:
+                              idx === selectedResultIndex
+                                ? '#f8fafc'
+                                : inCartUnits > 0
+                                ? '#f0fdf4'
+                                : '#ffffff',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            transition: 'background-color 0.1s ease',
+                          }}
+                          onMouseEnter={() => setSelectedResultIndex(idx)}
+                        >
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '14px' }}>
+                                {med.brandName}
+                              </span>
+                              {med.scheduleCategory && med.scheduleCategory !== 'NONE' && (
+                                <span
+                                  style={{
+                                    fontSize: '10px',
+                                    padding: '1px 5px',
+                                    borderRadius: '4px',
+                                    backgroundColor: '#fef3c7',
+                                    color: '#b45309',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  Sch {med.scheduleCategory}
+                                </span>
+                              )}
+                              {inCartUnits > 0 && (
+                                <span
+                                  style={{
+                                    fontSize: '11px',
+                                    padding: '1px 7px',
+                                    borderRadius: '12px',
+                                    backgroundColor: '#dcfce7',
+                                    color: '#15803d',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  ✓ In Cart: {inCartUnits}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '3px' }}>
+                              {med.genericName} • {med.dosageForm} ({med.strength}) • Pack: {med.stripSize || 1}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectMedicine(med, true);
+                              }}
+                              style={{
+                                fontSize: '12px',
+                                backgroundColor: inCartUnits > 0 ? '#10b981' : '#2563eb',
+                                color: '#ffffff',
+                                padding: '5px 12px',
+                                borderRadius: '6px',
+                                fontWeight: 600,
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                              }}
+                            >
+                              {inCartUnits > 0 ? `+ Add More (${inCartUnits})` : '+ Add to Cart'}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               )}
@@ -1467,7 +1618,7 @@ export default function NewBillingPage() {
                 <div>Customer: {finalizedInvoice.customer.name}</div>
               )}
               {finalizedInvoice.doctorName && (
-                <div>Prescriber: Dr. {finalizedInvoice.doctorName}</div>
+                <div>Prescriber: {finalizedInvoice.doctorName.startsWith('Dr.') ? finalizedInvoice.doctorName : `Dr. ${finalizedInvoice.doctorName}`}</div>
               )}
               <div style={{ borderBottom: '1px dashed #94a3b8', margin: '8px 0' }} />
 
