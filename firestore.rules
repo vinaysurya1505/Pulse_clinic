@@ -1,0 +1,197 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isStoreMember(storeId) {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/stores/$(storeId)/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/stores/$(storeId)/members/$(request.auth.uid)).data.status == 'ACTIVE';
+    }
+
+    function getMemberRole(storeId) {
+      return get(/databases/$(database)/documents/stores/$(storeId)/members/$(request.auth.uid)).data.role;
+    }
+
+    function isStoreOwner(storeId) {
+      return isStoreMember(storeId) && getMemberRole(storeId) == 'OWNER';
+    }
+
+    function isStoreManager(storeId) {
+      return isStoreMember(storeId) && getMemberRole(storeId) in ['OWNER', 'MANAGER'];
+    }
+
+    function isStoreStaff(storeId) {
+      return isStoreMember(storeId) && getMemberRole(storeId) in ['OWNER', 'MANAGER', 'PHARMACIST'];
+    }
+
+    // Users collection
+    match /users/{uid} {
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      allow write: if false; // Admin SDK only
+    }
+
+    // Stores collection
+    match /stores/{storeId} {
+      allow read: if isStoreMember(storeId);
+      allow create: if isAuthenticated();
+      allow update: if isStoreOwner(storeId);
+      allow delete: if false;
+
+      // Members subcollection
+      match /members/{uid} {
+        allow read: if isStoreMember(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Medicines subcollection
+      match /medicines/{medicineId} {
+        allow read: if isStoreMember(storeId);
+        allow create, update: if isStoreManager(storeId);
+        allow delete: if false;
+      }
+
+      // Batches subcollection
+      match /batches/{batchId} {
+        allow read: if isStoreMember(storeId);
+        allow write: if false; // Admin SDK only (transactions)
+      }
+
+      // Invoices subcollection
+      match /invoices/{invoiceId} {
+        allow read: if isStoreMember(storeId);
+        allow write: if false; // Admin SDK only (atomic finalization)
+      }
+
+      // Stock Ledger (immutable)
+      match /stockLedger/{entryId} {
+        allow read: if isStoreMember(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Sales Ledger (immutable)
+      match /salesLedger/{entryId} {
+        allow read: if isStoreMember(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Suppliers
+      match /suppliers/{supplierId} {
+        allow read: if isStoreMember(storeId);
+        allow create, update: if isStoreManager(storeId);
+        allow delete: if false;
+      }
+
+      // Supplier Ledger (immutable)
+      match /supplierLedger/{entryId} {
+        allow read: if isStoreMember(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Purchase Orders
+      match /purchaseOrders/{poId} {
+        allow read: if isStoreMember(storeId);
+        allow write: if false; // Admin SDK only (state machine)
+      }
+
+      // Doctors
+      match /doctors/{doctorId} {
+        allow read: if isStoreMember(storeId);
+        allow create, update: if isStoreManager(storeId);
+        allow delete: if false;
+      }
+
+      // Employees
+      match /employees/{employeeId} {
+        allow read: if isStoreManager(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Employee Ledger (immutable)
+      match /employeeLedger/{entryId} {
+        allow read: if isStoreManager(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Expenses
+      match /expenses/{expenseId} {
+        allow read: if isStoreMember(storeId);
+        allow create: if isStoreManager(storeId);
+        allow update, delete: if false;
+      }
+
+      // Daily Summaries
+      match /dailySummaries/{dateKey} {
+        allow read: if isStoreMember(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Monthly Summaries
+      match /monthlySummaries/{monthKey} {
+        allow read: if isStoreMember(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Daily Closings
+      match /dailyClosings/{closingId} {
+        allow read: if isStoreMember(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Approval Requests
+      match /approvalRequests/{requestId} {
+        allow read: if isStoreStaff(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Refunds
+      match /refunds/{refundId} {
+        allow read: if isStoreMember(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Audit Logs (immutable, read-only for clients)
+      match /auditLogs/{logId} {
+        allow read: if isStoreManager(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Notifications
+      match /notifications/{notifId} {
+        allow read: if isStoreMember(storeId);
+        allow update: if isStoreMember(storeId);
+        allow create, delete: if false;
+      }
+
+      // Import Jobs
+      match /importJobs/{jobId} {
+        allow read: if isStoreManager(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Report Jobs
+      match /reportJobs/{jobId} {
+        allow read: if isStoreMember(storeId);
+        allow write: if false; // Admin SDK only
+      }
+
+      // Counters
+      match /counters/{counterId} {
+        allow read, write: if false; // Admin SDK only
+      }
+    }
+
+    // Outbox (worker-only)
+    match /outbox/{docId} {
+      allow read, write: if false; // Admin SDK only
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
