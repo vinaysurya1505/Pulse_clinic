@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.next/
+.turbo/
+*.tsbuildinfo
+.env
+.env.local
+.env.production
+.firebase-seed/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.vercel/
+coverage/

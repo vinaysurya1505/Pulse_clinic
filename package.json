@@ -1,0 +1,19 @@
+{
+  "name": "pulseclinic",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel dev",
+    "dev:web": "pnpm --filter @pulseclinic/web dev",
+    "dev:api": "pnpm --filter @pulseclinic/api dev",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm --filter @pulseclinic/api typecheck && pnpm --filter @pulseclinic/web typecheck",
+    "test": "pnpm -r test",
+    "test:e2e": "npx tsx --test apps/api/src/services/*.test.ts",
+    "clean": "pnpm -r clean",
+    "emulators:start": "firebase emulators:start --import=.firebase-seed --export-on-exit=.firebase-seed"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
