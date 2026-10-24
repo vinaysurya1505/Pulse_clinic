@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch --env-file=.env src/server.ts",
+    "prebuild": "tsc -p ../../packages/config/tsconfig.json && tsc -p ../../packages/types/tsconfig.json",
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",

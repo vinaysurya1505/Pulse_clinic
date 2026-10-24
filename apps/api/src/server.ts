@@ -60,8 +60,10 @@ app.use('/api/v1/audit-logs', auditLogRouter);
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`PulseClinic API running on port ${PORT}`);
-});
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    console.log(`PulseClinic API running on port ${PORT}`);
+  });
+}
 
 export default app;
