@@ -31,6 +31,9 @@ export default function SignInPage() {
     setSubmitting(false);
 
     if (success) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('inauguration_greeting_dismissed');
+      }
       router.replace('/dashboard');
     }
   };

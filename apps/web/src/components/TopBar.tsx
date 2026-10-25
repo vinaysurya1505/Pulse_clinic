@@ -72,6 +72,35 @@ export function TopBar() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+          {/* Inauguration Wishes Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('open-inauguration-greeting'));
+              }
+            }}
+            title="View Grand Inauguration Wishes & Brotherly Photo"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+              border: '1px solid #fcd34d',
+              borderRadius: '20px',
+              padding: '5px 12px',
+              fontSize: '12px',
+              fontWeight: 700,
+              color: '#92400e',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              boxShadow: '0 1px 3px rgba(180, 83, 9, 0.1)',
+            }}
+          >
+            <span>🎉</span>
+            <span>26th Oct Inauguration</span>
+          </button>
+
           {/* Notifications */}
           <button
             onClick={() => setShowNotifications(true)}
