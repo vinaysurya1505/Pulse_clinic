@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { useStore } from '@/context/StoreContext';
 import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '@/lib/api';
@@ -269,6 +270,27 @@ export default function MedicinesPage() {
           </div>
 
           <div style={{ display: 'flex', gap: '12px' }}>
+            <Link
+              href="/imports/csv"
+              id="bulk-import-csv-btn"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 18px',
+                backgroundColor: '#ffffff',
+                color: '#334155',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 600,
+                textDecoration: 'none',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>📁 Bulk Import (CSV)</span>
+            </Link>
             <button
               onClick={handleOpenAddModal}
               id="add-medicine-btn"

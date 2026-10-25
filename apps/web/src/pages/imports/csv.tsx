@@ -8,7 +8,12 @@ import { useStore } from '@/context/StoreContext';
 import { apiPost, ApiError } from '@/lib/api';
 import { CSVPreviewResult, ImportJob } from '@pulseclinic/types';
 
-const SAMPLE_CSV = `Brand Name,Generic Name,Category,Dosage Form,Strength,Pack Size,Allow Loose Sales,Drug Schedule,GST %,HSN,Rack Location,Batch Number,Expiry Date,MRP,Cost Price,Initial Stock
+const CSV_HEADER_ROW = 'Brand Name,Generic Name,Category,Dosage Form,Strength,Pack Size,Allow Loose Sales,Drug Schedule,GST %,HSN,Rack Location,Batch Number,Expiry Date,MRP,Cost Price,Initial Stock';
+
+const BLANK_TEMPLATE_CSV = `${CSV_HEADER_ROW}
+Augmentin 625 Duo,Amoxicillin + Clavulanic Acid,Antibiotics & Anti-infectives,Tablet,625mg,10,TRUE,H1,12,3004,Rack B-1,AUG2024A,2027-08-31,205.50,145.00,100`;
+
+const SAMPLE_CSV = `${CSV_HEADER_ROW}
 Augmentin 625 Duo,Amoxicillin + Clavulanic Acid,Antibiotics & Anti-infectives,Tablet,625mg,10,TRUE,H1,12,3004,Rack B-1,AUG2024A,2027-08-31,205.50,145.00,100
 Dolo 650,Paracetamol,Analgesics & Antipyretics,Tablet,650mg,15,TRUE,NONE,12,3004,Rack A-1,DOL2401,2027-11-30,32.00,22.50,200
 Azithral 500,Azithromycin,Antibiotics & Anti-infectives,Tablet,500mg,5,FALSE,H,12,3004,Rack B-2,AZI5001,2026-12-31,120.00,85.00,50
@@ -24,6 +29,7 @@ export default function CSVImportPage() {
   const { activeStore } = useStore();
   const [csvContent, setCsvContent] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
 
   // Preview State
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -115,12 +121,23 @@ export default function CSVImportPage() {
     }
   };
 
+  const downloadBlankTemplate = () => {
+    const blob = new Blob([BLANK_TEMPLATE_CSV], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'pulseclinic_medicine_import_template_blank.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const downloadSampleTemplate = () => {
     const blob = new Blob([SAMPLE_CSV], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'pulseclinic-medicines-template.csv');
+    link.setAttribute('download', 'pulseclinic_medicines_sample_with_data.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -183,26 +200,26 @@ export default function CSVImportPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button
-              onClick={downloadSampleTemplate}
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <Link
+              href="/inventory/medicines"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '6px',
                 padding: '10px 16px',
                 backgroundColor: '#ffffff',
                 border: '1px solid #cbd5e1',
                 borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: 600,
-                color: '#334155',
-                cursor: 'pointer',
+                color: '#475569',
+                textDecoration: 'none',
                 transition: 'all 0.15s ease'
               }}
             >
-              <span>📥 Download CSV Template</span>
-            </button>
+              <span>← Medicine Catalog</span>
+            </Link>
             <button
               onClick={handleLoadSample}
               id="load-sample-btn"
@@ -222,9 +239,228 @@ export default function CSVImportPage() {
                 transition: 'all 0.15s ease'
               }}
             >
-              <span>🧪 Load 10 Sample Medicines</span>
+              <span>🧪 Quick Load 10 Samples</span>
             </button>
           </div>
+        </div>
+
+        {/* Template Download & Field Guide Card */}
+        <div style={{
+          background: '#ffffff',
+          borderRadius: '16px',
+          padding: '24px 28px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ maxWidth: '640px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '22px' }}>📥</span>
+                <h2 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                  Standard CSV Template for Bulk Medicine Registration
+                </h2>
+              </div>
+              <p style={{ fontSize: '13px', color: '#64748b', margin: '6px 0 0 0', lineHeight: 1.5 }}>
+                Download our pre-structured template, feed your medicine formulations & inventory batches accordingly, and upload below for instant bulk registration.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={downloadBlankTemplate}
+                id="download-blank-template-btn"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 16px',
+                  backgroundColor: '#ffffff',
+                  border: '1.5px solid #2563eb',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#2563eb',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>📄 Blank Template</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={downloadSampleTemplate}
+                id="download-sample-template-btn"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 16px',
+                  backgroundColor: '#2563eb',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>📋 Sample with Data (10 Rows)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowGuide((prev) => !prev)}
+                id="toggle-guide-btn"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '10px 14px',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#475569',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>{showGuide ? 'Hide Format Guide ▴' : 'View Format Guide ▾'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Collapsible Format Guide */}
+          {showGuide && (
+            <div style={{
+              marginTop: '4px',
+              padding: '18px',
+              backgroundColor: '#f8fafc',
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0',
+              overflowX: 'auto',
+            }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b', marginBottom: '10px' }}>
+                CSV Columns & Field Reference:
+              </div>
+              <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #cbd5e1', color: '#64748b' }}>
+                    <th style={{ padding: '8px 12px' }}>Header Name</th>
+                    <th style={{ padding: '8px 12px' }}>Required?</th>
+                    <th style={{ padding: '8px 12px' }}>Format / Description</th>
+                    <th style={{ padding: '8px 12px' }}>Sample Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Brand Name</td>
+                    <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 700 }}>Mandatory</td>
+                    <td style={{ padding: '8px 12px' }}>Commercial trade formulation name</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>Augmentin 625 Duo</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Generic Name</td>
+                    <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 700 }}>Mandatory</td>
+                    <td style={{ padding: '8px 12px' }}>Active chemical molecule composition</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>Amoxicillin + Clavulanic Acid</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Category</td>
+                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
+                    <td style={{ padding: '8px 12px' }}>Therapeutic category (e.g. Antibiotics, Analgesics)</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>Antibiotics & Anti-infectives</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Dosage Form</td>
+                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
+                    <td style={{ padding: '8px 12px' }}>Tablet, Syrup, Capsule, Ointment, Injection</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>Tablet</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Strength</td>
+                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
+                    <td style={{ padding: '8px 12px' }}>Dosage strength (e.g. 625mg, 500mg, 100ml)</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>625mg</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Pack Size</td>
+                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
+                    <td style={{ padding: '8px 12px' }}>Strip or container pack size (default: 10)</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>10</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Allow Loose Sales</td>
+                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
+                    <td style={{ padding: '8px 12px' }}>TRUE or FALSE (permit cutting strips)</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>TRUE</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Drug Schedule</td>
+                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
+                    <td style={{ padding: '8px 12px' }}>Regulatory category: NONE, H, H1, or X</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>H1</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>GST %</td>
+                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
+                    <td style={{ padding: '8px 12px' }}>Tax slab: 0, 5, 12, 18, 28 (default: 12)</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>12</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>HSN</td>
+                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
+                    <td style={{ padding: '8px 12px' }}>Customs HSN code (default: 3004)</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>3004</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Rack Location</td>
+                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
+                    <td style={{ padding: '8px 12px' }}>Pharmacy shelf / bin location</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>Rack B-1</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Batch Number</td>
+                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
+                    <td style={{ padding: '8px 12px' }}>Initial inventory batch number</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>AUG2024A</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Expiry Date</td>
+                    <td style={{ padding: '8px 12px', color: '#d97706', fontWeight: 600 }}>Required if Batch given</td>
+                    <td style={{ padding: '8px 12px' }}>Format: YYYY-MM-DD</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>2027-08-31</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>MRP</td>
+                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
+                    <td style={{ padding: '8px 12px' }}>Maximum Retail Price per pack in Rupees</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>205.50</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Cost Price</td>
+                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
+                    <td style={{ padding: '8px 12px' }}>Store purchase cost per pack in Rupees</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>145.00</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Initial Stock</td>
+                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
+                    <td style={{ padding: '8px 12px' }}>Starting stock quantity in base units</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>100</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Upload Card / Dropzone */}
