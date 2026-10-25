@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { useStore } from '@/context/StoreContext';
@@ -61,6 +61,7 @@ export default function NewBillingPage() {
   const [customerStateCode, setCustomerStateCode] = useState('29'); // Default Karnataka
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
   const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
+  const [doctorsLoading, setDoctorsLoading] = useState(false);
 
   // Payment Modal
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -78,14 +79,29 @@ export default function NewBillingPage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Load doctors for prescriber dropdown
-  useEffect(() => {
+  const loadDoctors = useCallback(async () => {
     if (!activeStore) return;
-    apiGet<{ success: boolean; doctors: DoctorProfile[] }>('/doctors?isActive=true&limit=100', activeStore.storeId)
-      .then((res) => {
-        if (res.success) setDoctors(res.doctors || []);
-      })
-      .catch(() => {});
+    setDoctorsLoading(true);
+    try {
+      // Call /doctors?limit=100 without isActive query param to ensure compatibility
+      const res = await apiGet<{ success: boolean; doctors: DoctorProfile[] }>(
+        '/doctors?limit=100',
+        activeStore.storeId
+      );
+      if (res.success && Array.isArray(res.doctors)) {
+        const activeDocs = res.doctors.filter((d) => d.isActive !== false);
+        setDoctors(activeDocs);
+      }
+    } catch (err) {
+      console.error('Failed to load registered doctors:', err);
+    } finally {
+      setDoctorsLoading(false);
+    }
   }, [activeStore?.storeId]);
+
+  useEffect(() => {
+    loadDoctors();
+  }, [loadDoctors]);
 
   // Load full medicine catalogue for dropdown browsing
   useEffect(() => {
@@ -1100,12 +1116,41 @@ export default function NewBillingPage() {
                 </div>
 
                 <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
-                    Prescribing Doctor
-                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+                      Prescribing Doctor
+                    </label>
+                    <div style={{ display: 'flex', gap: '10px', fontSize: '11px' }}>
+                      <button
+                        type="button"
+                        onClick={loadDoctors}
+                        disabled={doctorsLoading}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#2563eb',
+                          cursor: doctorsLoading ? 'wait' : 'pointer',
+                          fontWeight: 600,
+                          padding: 0,
+                          fontSize: '11px',
+                        }}
+                      >
+                        {doctorsLoading ? 'Loading...' : '↻ Refresh List'}
+                      </button>
+                      <a
+                        href="/doctors"
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: '#059669', fontWeight: 600, textDecoration: 'none' }}
+                      >
+                        + Register Doctor
+                      </a>
+                    </div>
+                  </div>
                   <select
                     value={selectedDoctorId}
                     onChange={(e) => setSelectedDoctorId(e.target.value)}
+                    id="pos-prescribing-doctor-select"
                     style={{
                       width: '100%',
                       padding: '8px 10px',
@@ -1116,12 +1161,14 @@ export default function NewBillingPage() {
                     }}
                   >
                     <option value="">-- Select Registered Doctor --</option>
-                    {doctors.length === 0 ? (
+                    {doctorsLoading ? (
+                      <option value="" disabled>Loading registered doctors...</option>
+                    ) : doctors.length === 0 ? (
                       <option value="" disabled>No registered doctors found (Register in Doctors menu)</option>
                     ) : (
                       doctors.map((d) => (
                         <option key={d.id} value={d.id}>
-                          {d.name.startsWith('Dr.') ? d.name : `Dr. ${d.name}`} ({d.registrationNumber}){d.specialization ? ` — ${d.specialization}` : ''}
+                          {d.name.startsWith('Dr.') ? d.name : `Dr. ${d.name}`}{d.registrationNumber ? ` (${d.registrationNumber})` : ''}{d.specialization ? ` — ${d.specialization}` : ''}
                         </option>
                       ))
                     )}

@@ -15,11 +15,8 @@ export class DoctorService {
     const colRef = this.getDoctorsCol(storeId);
     const limitCount = Math.min(options.limit || 50, 100);
 
+    // Single-field orderBy avoids requiring composite index in Firestore
     let query: FirebaseFirestore.Query = colRef.orderBy('name', 'asc').limit(limitCount + 1);
-
-    if (options.isActive !== undefined) {
-      query = query.where('isActive', '==', options.isActive);
-    }
 
     if (options.cursor) {
       const cursorDoc = await colRef.doc(options.cursor).get();
@@ -33,6 +30,10 @@ export class DoctorService {
       id: doc.id,
       ...(doc.data() as Omit<DoctorProfile, 'id'>),
     }));
+
+    if (options.isActive !== undefined) {
+      docs = docs.filter((d) => (options.isActive ? d.isActive !== false : d.isActive === false));
+    }
 
     if (options.search && options.search.trim().length > 0) {
       const q = options.search.toLowerCase().trim();

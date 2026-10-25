@@ -106,6 +106,10 @@ export function requirePermission(permission: NamedPermission) {
       return;
     }
 
+    if (role === 'SUPER_ADMIN') {
+      return next();
+    }
+
     const allowedRoles = PERMISSION_ROLE_MAP[permission];
     if (!allowedRoles.includes(role)) {
       res.status(403).json({
