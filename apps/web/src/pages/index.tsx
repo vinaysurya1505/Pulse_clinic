@@ -1571,18 +1571,48 @@ export default function HomePage() {
               borderTop: '1px solid #e2e8f0',
               paddingTop: '24px',
               display: 'flex',
-              justifyContent: 'space-between',
+              flexDirection: 'column',
               alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '12px',
-              fontSize: '12px',
-              color: '#64748b',
+              gap: '16px',
             }}
           >
-            <div>© {new Date().getFullYear()} PulseClinic Systems Inc. All rights reserved.</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#059669' }} />
-              <span>All Systems Operational • Cloud Sync Active</span>
+            {/* Dedication Message */}
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 22px',
+                borderRadius: '9999px',
+                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(99, 102, 241, 0.08))',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#1e293b',
+                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.06)',
+              }}
+            >
+              <span>❤️</span>
+              <span>Engineered with love — from a brother&apos;s heart to his brother&apos;s success.</span>
+            </div>
+
+            <div
+              style={{
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px',
+                fontSize: '12px',
+                color: '#64748b',
+              }}
+            >
+              <div>© {new Date().getFullYear()} PulseClinic Systems Inc. All rights reserved.</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#059669' }} />
+                <span>All Systems Operational • Cloud Sync Active</span>
+              </div>
             </div>
           </div>
         </footer>
