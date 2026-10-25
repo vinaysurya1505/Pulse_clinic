@@ -27,6 +27,7 @@ export const COLLECTIONS = {
   supplierLedger: (storeId: string) => `stores/${storeId}/supplierLedger`,
   purchaseOrders: (storeId: string) => `stores/${storeId}/purchaseOrders`,
   doctors: (storeId: string) => `stores/${storeId}/doctors`,
+  doctorCommissions: (storeId: string) => `stores/${storeId}/doctorCommissions`,
   employees: (storeId: string) => `stores/${storeId}/employees`,
   employeeLedger: (storeId: string) => `stores/${storeId}/employeeLedger`,
   expenses: (storeId: string) => `stores/${storeId}/expenses`,

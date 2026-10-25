@@ -39,6 +39,9 @@ export class RefundExecutionEngine {
       }
       const invoice = invoiceDoc.data() as InvoiceRecord;
 
+      const doctorCommissionRef = db.collection(COLLECTIONS.doctorCommissions(storeId)).doc(invoiceId);
+      const doctorCommissionDoc = await t.get(doctorCommissionRef);
+
       if (invoice.status !== 'FINALIZED' && invoice.status !== 'PARTIALLY_REFUNDED') {
         throw new Error(`Cannot refund invoice with status "${invoice.status}".`);
       }
@@ -173,6 +176,15 @@ export class RefundExecutionEngine {
         status: newInvoiceStatus,
         updatedAt: now,
       });
+
+      // 5. Update doctor commission record if exists
+      if (doctorCommissionDoc.exists) {
+        t.update(doctorCommissionRef, {
+          invoiceStatus: newInvoiceStatus,
+          finalDoctorCommissionPaise: 0,
+          updatedAt: now,
+        });
+      }
 
       return { refundRecord, invoiceStatus: newInvoiceStatus };
     });

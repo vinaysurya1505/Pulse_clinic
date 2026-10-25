@@ -29,6 +29,7 @@ exports.COLLECTIONS = {
     supplierLedger: (storeId) => `stores/${storeId}/supplierLedger`,
     purchaseOrders: (storeId) => `stores/${storeId}/purchaseOrders`,
     doctors: (storeId) => `stores/${storeId}/doctors`,
+    doctorCommissions: (storeId) => `stores/${storeId}/doctorCommissions`,
     employees: (storeId) => `stores/${storeId}/employees`,
     employeeLedger: (storeId) => `stores/${storeId}/employeeLedger`,
     expenses: (storeId) => `stores/${storeId}/expenses`,

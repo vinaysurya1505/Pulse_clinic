@@ -9,6 +9,8 @@ import {
   BillingQuoteResult,
   BatchInventory,
   InvoiceRecord,
+  DiscountAllocationMethod,
+  DoctorCommissionRecord,
 } from '@pulseclinic/types';
 import { AuditExplorerService } from './AuditExplorerService';
 
@@ -20,6 +22,7 @@ export interface FinalizeBillInput {
     discountBps?: number;
   }>;
   overallDiscountBps?: number;
+  discountAllocationMethod?: DiscountAllocationMethod;
   paymentModes: PaymentEntry[];
   customer?: {
     name?: string;
@@ -55,6 +58,8 @@ export class BillFinalizationService {
       items: input.items,
       overallDiscountBps: input.overallDiscountBps,
       customerStateCode: input.customer?.stateCode,
+      doctorId: input.doctorId,
+      discountAllocationMethod: input.discountAllocationMethod,
     };
     const quote: BillingQuoteResult = await BillingCalculationEngine.calculateQuote(storeId, quoteReq);
 
@@ -203,11 +208,51 @@ export class BillFinalizationService {
         hasScheduleH,
         billerUid,
         ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+        ...(quote.doctorCommissionBps !== undefined ? { doctorCommissionBps: quote.doctorCommissionBps } : {}),
+        ...(quote.originalDoctorCommissionPaise !== undefined ? { originalDoctorCommissionPaise: quote.originalDoctorCommissionPaise } : {}),
+        ...(quote.discountAllocationMethod ? { discountAllocationMethod: quote.discountAllocationMethod } : {}),
+        ...(quote.nominalStoreDiscountPaise !== undefined ? { nominalStoreDiscountPaise: quote.nominalStoreDiscountPaise } : {}),
+        ...(quote.nominalDoctorDiscountPaise !== undefined ? { nominalDoctorDiscountPaise: quote.nominalDoctorDiscountPaise } : {}),
+        ...(quote.actualStoreDiscountPaise !== undefined ? { actualStoreDiscountPaise: quote.actualStoreDiscountPaise } : {}),
+        ...(quote.actualDoctorDiscountPaise !== undefined ? { actualDoctorDiscountPaise: quote.actualDoctorDiscountPaise } : {}),
+        ...(quote.unallocatedDiscountPaise !== undefined ? { unallocatedDiscountPaise: quote.unallocatedDiscountPaise } : {}),
+        ...(quote.finalDoctorCommissionPaise !== undefined ? { finalDoctorCommissionPaise: quote.finalDoctorCommissionPaise } : {}),
         createdAt: now,
         updatedAt: now,
       };
 
       t.set(invoiceRef, record);
+
+      // 5. Write doctor commission audit record if commission is tracked
+      if (input.doctorId && (quote.originalDoctorCommissionPaise > 0 || quote.finalDoctorCommissionPaise > 0)) {
+        const commissionRef = db.collection(COLLECTIONS.doctorCommissions(storeId)).doc(invoiceRef.id);
+        const commissionRecord: DoctorCommissionRecord = {
+          id: invoiceRef.id,
+          storeId,
+          invoiceId: invoiceRef.id,
+          invoiceNumber,
+          doctorId: input.doctorId,
+          ...(input.doctorName ? { doctorName: input.doctorName } : {}),
+          commissionRateBps: quote.doctorCommissionBps || 0,
+          commissionBasis: 'GROSS_TOTAL_BEFORE_DISCOUNT',
+          originalGrossTotalPaise: quote.grossTotalPaise,
+          originalDoctorCommissionPaise: quote.originalDoctorCommissionPaise,
+          patientDiscountBps: input.overallDiscountBps || 0,
+          totalPatientDiscountPaise: quote.totalDiscountPaise,
+          discountAllocationMethod: quote.discountAllocationMethod,
+          nominalStoreDiscountPaise: quote.nominalStoreDiscountPaise,
+          nominalDoctorDiscountPaise: quote.nominalDoctorDiscountPaise,
+          actualStoreDiscountPaise: quote.actualStoreDiscountPaise,
+          actualDoctorDiscountPaise: quote.actualDoctorDiscountPaise,
+          unallocatedDiscountPaise: quote.unallocatedDiscountPaise,
+          finalDoctorCommissionPaise: quote.finalDoctorCommissionPaise,
+          invoiceStatus: 'FINALIZED',
+          createdAt: now,
+          updatedAt: now,
+        };
+        t.set(commissionRef, commissionRecord);
+      }
+
       return record;
     });
 

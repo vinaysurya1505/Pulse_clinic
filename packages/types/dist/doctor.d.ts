@@ -2,7 +2,7 @@ export interface DoctorProfile {
     id: string;
     storeId: string;
     name: string;
-    registrationNumber: string;
+    registrationNumber?: string;
     specialization?: string;
     phone?: string;
     email?: string;
@@ -16,7 +16,7 @@ export interface DoctorProfile {
 }
 export interface CreateDoctorInput {
     name: string;
-    registrationNumber: string;
+    registrationNumber?: string;
     specialization?: string;
     phone?: string;
     email?: string;

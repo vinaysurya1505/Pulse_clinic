@@ -8,6 +8,8 @@ import {
   BatchInventory,
   calculateUnitPrice,
   validateLooseSale,
+  DiscountAllocationMethod,
+  DoctorProfile,
 } from '@pulseclinic/types';
 
 export interface AuthoritativeQuoteRequest {
@@ -20,6 +22,8 @@ export interface AuthoritativeQuoteRequest {
   }>;
   overallDiscountBps?: number;
   customerStateCode?: string;
+  doctorId?: string;
+  discountAllocationMethod?: DiscountAllocationMethod;
   enableDoctorCommission?: boolean;
   doctorCommissionBps?: number;
   roundOffToRupee?: boolean;
@@ -27,7 +31,7 @@ export interface AuthoritativeQuoteRequest {
 
 export class BillingCalculationEngine {
   /**
-   * Server-authoritative quote calculation (Prompt 11 & ADR-007)
+   * Server-authoritative quote calculation (ADR-007, Section 3, 5, 6)
    * Fetches batch and medicine records directly from Firestore to ensure
    * zero trust in client-supplied prices, stock or tax rates.
    */
@@ -43,6 +47,38 @@ export class BillingCalculationEngine {
     const storeDoc = await db.collection(COLLECTIONS.stores).doc(storeId).get();
     const storeData = storeDoc.data();
     const storeStateCode = storeData?.address?.stateCode || '29';
+
+    // Retrieve doctor commission configuration authoritatively from DB if doctorId is present
+    let enableDoctorCommission = Boolean(request.enableDoctorCommission);
+    let doctorCommissionBps = request.doctorCommissionBps || 0;
+
+    if (request.doctorId) {
+      const docSnap = await db.collection(COLLECTIONS.doctors(storeId)).doc(request.doctorId).get();
+      if (docSnap.exists) {
+        const docData = docSnap.data() as DoctorProfile;
+        if (docData.isActive !== false && docData.commissionEnabled === true) {
+          enableDoctorCommission = true;
+          doctorCommissionBps = docData.commissionBps || 0;
+        } else {
+          enableDoctorCommission = false;
+          doctorCommissionBps = 0;
+        }
+      } else {
+        enableDoctorCommission = false;
+        doctorCommissionBps = 0;
+      }
+    }
+
+    // Validation: If discount > 0 and allocation is DOCTOR or BOTH, require a commission-enabled doctor
+    const allocationMethod: DiscountAllocationMethod = request.discountAllocationMethod || 'STORE';
+    const totalDiscountBps = Math.max(0, request.overallDiscountBps || 0);
+    if (totalDiscountBps > 0 && (allocationMethod === 'DOCTOR' || allocationMethod === 'BOTH')) {
+      if (!enableDoctorCommission || doctorCommissionBps <= 0) {
+        throw new Error(
+          `Cannot allocate discount to doctor commission: No doctor with active commission tracking is selected. Please select 'Store' allocation.`
+        );
+      }
+    }
 
     const verifiedLineItems: BillingLineItemInput[] = [];
 
@@ -92,7 +128,8 @@ export class BillingCalculationEngine {
 
       // Authoritative unit price from batch MRP & strip size
       const unitPricePaise = calculateUnitPrice(batch.mrpPaise, medicine.stripSize || 1);
-      const gstRateBps = reqItem.customGstRateBps !== undefined ? reqItem.customGstRateBps : (medicine.gstRateBps || 0);
+      // Section 6: Use configured medicine GST rate from backend catalogue (ignore client-supplied overrides)
+      const gstRateBps = medicine.gstRateBps || 0;
 
       verifiedLineItems.push({
         medicineId: reqItem.medicineId,
@@ -114,8 +151,9 @@ export class BillingCalculationEngine {
       overallDiscountBps: request.overallDiscountBps,
       storeStateCode,
       customerStateCode: request.customerStateCode || storeStateCode,
-      enableDoctorCommission: request.enableDoctorCommission,
-      doctorCommissionBps: request.doctorCommissionBps,
+      enableDoctorCommission,
+      doctorCommissionBps,
+      discountAllocationMethod: allocationMethod,
       roundOffToRupee: request.roundOffToRupee !== false,
     });
   }

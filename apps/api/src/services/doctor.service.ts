@@ -69,8 +69,14 @@ export class DoctorService {
     if (!input.name || !input.name.trim()) {
       throw new Error('Doctor name is required');
     }
-    if (!input.registrationNumber || !input.registrationNumber.trim()) {
-      throw new Error('Medical registration number is required');
+
+    const commissionEnabled = input.commissionEnabled === true;
+    let commissionBps = 0;
+    if (commissionEnabled) {
+      commissionBps = Number(input.commissionBps) || 0;
+      if (commissionBps < 0 || commissionBps > 10000) {
+        throw new Error('Commission rate must be between 0% and 100%');
+      }
     }
 
     const now = new Date().toISOString();
@@ -80,14 +86,13 @@ export class DoctorService {
     const data: Omit<DoctorProfile, 'id'> = {
       storeId,
       name: input.name.trim(),
-      registrationNumber: input.registrationNumber.trim().toUpperCase(),
-      specialization: input.specialization?.trim() || 'General Medicine',
+      registrationNumber: input.registrationNumber?.trim() ? input.registrationNumber.trim().toUpperCase() : '',
+      specialization: input.specialization?.trim() || '',
       phone: input.phone?.trim() || '',
       email: input.email?.trim() || '',
       hospitalClinic: input.hospitalClinic?.trim() || '',
-      commissionBps: Number(input.commissionBps) || 0,
-      // DEC-OPEN-02: Doctor commission must be configurable and disabled by default
-      commissionEnabled: input.commissionEnabled === true,
+      commissionBps,
+      commissionEnabled,
       prescriptionsLinkedCount: 0,
       isActive: true,
       createdAt: now,

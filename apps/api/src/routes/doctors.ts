@@ -11,12 +11,12 @@ doctorRouter.use(tenantMiddleware);
 
 const createDoctorSchema = z.object({
   name: z.string().min(1, 'Doctor name is required').trim(),
-  registrationNumber: z.string().min(1, 'Medical registration number is required').trim(),
-  specialization: z.string().optional(),
-  phone: z.string().optional(),
+  registrationNumber: z.string().trim().optional(),
+  specialization: z.string().trim().optional(),
+  phone: z.string().trim().optional(),
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
-  hospitalClinic: z.string().optional(),
-  commissionBps: z.number().int().min(0).max(10000).optional(),
+  hospitalClinic: z.string().trim().optional(),
+  commissionBps: z.number().int().min(0, 'Commission rate cannot be negative').max(10000, 'Commission cannot exceed 100%').optional(),
   commissionEnabled: z.boolean().optional(),
 });
 

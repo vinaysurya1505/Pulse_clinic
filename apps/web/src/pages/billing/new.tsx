@@ -15,6 +15,7 @@ import {
   formatPaiseToINR,
   calculateUnitPrice,
   sortBatchesFEFO,
+  DiscountAllocationMethod,
 } from '@pulseclinic/types';
 
 interface CartItem {
@@ -23,7 +24,6 @@ interface CartItem {
   availableBatches: BatchInventory[];
   quantityUnits: number;
   discountBps: number;
-  customGstRateBps?: number;
 }
 
 export default function NewBillingPage() {
@@ -50,6 +50,7 @@ export default function NewBillingPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [overallDiscountBps, setOverallDiscountBps] = useState(0);
   const [discountInput, setDiscountInput] = useState('0');
+  const [discountAllocationMethod, setDiscountAllocationMethod] = useState<DiscountAllocationMethod>('STORE');
 
   // Debounce discountInput to allow smooth multi-digit typing without interrupting recalculation
   useEffect(() => {
@@ -73,6 +74,19 @@ export default function NewBillingPage() {
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
   const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
   const [doctorsLoading, setDoctorsLoading] = useState(false);
+
+  const selectedDoc = useMemo(
+    () => doctors.find((d) => d.id === selectedDoctorId),
+    [doctors, selectedDoctorId]
+  );
+  const hasDoctorCommission = Boolean(selectedDoc && selectedDoc.commissionEnabled && (selectedDoc.commissionBps || 0) > 0);
+
+  // When no doctor with active commission is selected, revert discount allocation to STORE
+  useEffect(() => {
+    if (!hasDoctorCommission && discountAllocationMethod !== 'STORE') {
+      setDiscountAllocationMethod('STORE');
+    }
+  }, [hasDoctorCommission, discountAllocationMethod]);
 
   // Payment Modal
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -269,7 +283,6 @@ export default function NewBillingPage() {
             availableBatches: sorted,
             quantityUnits: medicine.stripSize || 1,
             discountBps: 0,
-            customGstRateBps: medicine.gstRateBps ?? 0,
           },
         ];
       });
@@ -278,7 +291,7 @@ export default function NewBillingPage() {
     }
   };
 
-  // Re-calculate live quote whenever cart or discounts change
+  // Re-calculate live quote whenever cart, doctor, or discounts change
   useEffect(() => {
     if (cartItems.length === 0 || !activeStore) {
       setQuote(null);
@@ -296,10 +309,11 @@ export default function NewBillingPage() {
             batchId: item.selectedBatch.id,
             quantityUnits: item.quantityUnits,
             discountBps: item.discountBps,
-            customGstRateBps: item.customGstRateBps,
           })),
           overallDiscountBps,
           customerStateCode,
+          doctorId: selectedDoctorId || undefined,
+          discountAllocationMethod,
           roundOffToRupee: true,
         };
 
@@ -322,7 +336,7 @@ export default function NewBillingPage() {
 
     const timer = setTimeout(fetchQuote, 150);
     return () => clearTimeout(timer);
-  }, [cartItems, overallDiscountBps, customerStateCode, activeStore?.storeId]);
+  }, [cartItems, overallDiscountBps, customerStateCode, selectedDoctorId, discountAllocationMethod, activeStore?.storeId]);
 
   const updateCartItemQuantity = (index: number, newQty: number) => {
     setCartItems((prev) => {
@@ -337,17 +351,6 @@ export default function NewBillingPage() {
         return prev;
       }
       item.quantityUnits = newQty;
-      return updated;
-    });
-  };
-
-  const updateCartItemGst = (index: number, gstRateBps: number) => {
-    setCartItems((prev) => {
-      const updated = [...prev];
-      updated[index] = {
-        ...updated[index],
-        customGstRateBps: Math.max(0, Math.min(10000, gstRateBps)),
-      };
       return updated;
     });
   };
@@ -416,9 +419,9 @@ export default function NewBillingPage() {
           batchId: it.selectedBatch.id,
           quantityUnits: it.quantityUnits,
           discountBps: it.discountBps,
-          customGstRateBps: it.customGstRateBps,
         })),
         overallDiscountBps,
+        discountAllocationMethod,
         paymentModes,
         customer: {
           name: customerName.trim() || undefined,
@@ -453,6 +456,15 @@ export default function NewBillingPage() {
             phone: customerPhone,
           },
           doctorName: selectedDoc?.name,
+          doctorCommissionBps: quote.doctorCommissionBps,
+          originalDoctorCommissionPaise: quote.originalDoctorCommissionPaise,
+          discountAllocationMethod: quote.discountAllocationMethod,
+          nominalStoreDiscountPaise: quote.nominalStoreDiscountPaise,
+          nominalDoctorDiscountPaise: quote.nominalDoctorDiscountPaise,
+          actualStoreDiscountPaise: quote.actualStoreDiscountPaise,
+          actualDoctorDiscountPaise: quote.actualDoctorDiscountPaise,
+          unallocatedDiscountPaise: quote.unallocatedDiscountPaise,
+          finalDoctorCommissionPaise: quote.finalDoctorCommissionPaise,
         });
         setIsReceiptModalOpen(true);
 
@@ -460,6 +472,7 @@ export default function NewBillingPage() {
         setCartItems([]);
         setOverallDiscountBps(0);
         setDiscountInput('0');
+        setDiscountAllocationMethod('STORE');
         setCustomerName('');
         setCustomerPhone('');
         setSelectedDoctorId('');
@@ -862,7 +875,6 @@ export default function NewBillingPage() {
                         <th style={{ padding: '12px 14px' }}>Batch (FEFO)</th>
                         <th style={{ padding: '12px 14px' }}>Unit Price</th>
                         <th style={{ padding: '12px 14px' }}>Quantity</th>
-                        <th style={{ padding: '12px 14px' }}>GST %</th>
                         <th style={{ padding: '12px 14px' }}>Line Total</th>
                         <th style={{ padding: '12px 14px', textAlign: 'right' }}>Action</th>
                       </tr>
@@ -955,42 +967,6 @@ export default function NewBillingPage() {
                                 >
                                   +
                                 </button>
-                              </div>
-                            </td>
-
-                            <td style={{ padding: '12px 14px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={
-                                    item.customGstRateBps !== undefined
-                                      ? (item.customGstRateBps / 100).toString()
-                                      : ((item.medicine.gstRateBps || 0) / 100).toString()
-                                  }
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (/^\d*\.?\d*$/.test(val)) {
-                                      const num = parseFloat(val);
-                                      updateCartItemGst(idx, isNaN(num) ? 0 : Math.round(num * 100));
-                                    }
-                                  }}
-                                  aria-label="GST Percentage"
-                                  title="Enter manual GST percentage"
-                                  style={{
-                                    width: '56px',
-                                    padding: '5px 6px',
-                                    textAlign: 'center',
-                                    borderRadius: '6px',
-                                    border: '1px solid #cbd5e1',
-                                    fontSize: '13px',
-                                    fontWeight: 600,
-                                    color: '#0f172a',
-                                    backgroundColor: '#ffffff',
-                                    outline: 'none',
-                                  }}
-                                />
-                                <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>%</span>
                               </div>
                             </td>
 
@@ -1153,7 +1129,7 @@ export default function NewBillingPage() {
                     ) : (
                       doctors.map((d) => (
                         <option key={d.id} value={d.id}>
-                          {d.name.startsWith('Dr.') ? d.name : `Dr. ${d.name}`}{d.registrationNumber ? ` (${d.registrationNumber})` : ''}{d.specialization ? ` — ${d.specialization}` : ''}
+                          {d.name.startsWith('Dr.') ? d.name : `Dr. ${d.name}`}{d.registrationNumber ? ` (${d.registrationNumber})` : ''}{d.specialization ? ` — ${d.specialization}` : ''}{d.commissionEnabled ? ` [${((d.commissionBps || 0) / 100).toFixed(0)}% Comm]` : ''}
                         </option>
                       ))
                     )}
@@ -1241,6 +1217,53 @@ export default function NewBillingPage() {
                   </div>
                 </div>
 
+                {/* Discount Borne By Dropdown (Section 4) */}
+                {quote.totalDiscountPaise > 0 && (
+                  <div
+                    style={{
+                      marginBottom: '14px',
+                      backgroundColor: '#f8fafc',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label htmlFor="pos-discount-borne-by-select" style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>
+                        Discount Borne By
+                      </label>
+                      <select
+                        id="pos-discount-borne-by-select"
+                        value={discountAllocationMethod}
+                        onChange={(e) => setDiscountAllocationMethod(e.target.value as 'STORE' | 'DOCTOR' | 'BOTH')}
+                        style={{
+                          padding: '5px 8px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          backgroundColor: '#ffffff',
+                          color: '#0f172a',
+                          outline: 'none',
+                        }}
+                      >
+                        <option value="STORE">Store (100%)</option>
+                        <option value="DOCTOR" disabled={!hasDoctorCommission}>
+                          Doctor Commission (100%){!hasDoctorCommission ? ' — (Commission Inactive)' : ''}
+                        </option>
+                        <option value="BOTH" disabled={!hasDoctorCommission}>
+                          Both Equally (50% / 50%){!hasDoctorCommission ? ' — (Commission Inactive)' : ''}
+                        </option>
+                      </select>
+                    </div>
+                    {!hasDoctorCommission && (
+                      <div style={{ fontSize: '11px', color: '#b45309', marginTop: '6px' }}>
+                        ⚠️ Select a prescribing doctor with active commission tracking to allocate discount to doctor commission.
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#475569' }}>
                   <span>Gross Total</span>
                   <span style={{ fontWeight: 600, color: '#0f172a' }}>{formatPaiseToINR(quote.grossTotalPaise)}</span>
@@ -1288,7 +1311,7 @@ export default function NewBillingPage() {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'baseline',
-                    marginBottom: '20px',
+                    marginBottom: '16px',
                   }}
                 >
                   <span style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Net Payable</span>
@@ -1296,6 +1319,86 @@ export default function NewBillingPage() {
                     {formatPaiseToINR(quote.netPayablePaise)}
                   </span>
                 </div>
+
+                {/* Doctor Commission Breakdown Area (Section 3 & 4) */}
+                {selectedDoc && (
+                  <div
+                    style={{
+                      backgroundColor: '#f0fdf4',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      marginBottom: '16px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Doctor Commission
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          backgroundColor: hasDoctorCommission ? '#dcfce7' : '#f1f5f9',
+                          color: hasDoctorCommission ? '#15803d' : '#64748b',
+                        }}
+                      >
+                        {hasDoctorCommission ? `${((selectedDoc.commissionBps || 0) / 100).toFixed(1)}% Active` : 'Inactive'}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#334155', marginBottom: '3px' }}>
+                      <span>Prescribing Doctor:</span>
+                      <span style={{ fontWeight: 600 }}>{selectedDoc.name.startsWith('Dr.') ? selectedDoc.name : `Dr. ${selectedDoc.name}`}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#334155', marginBottom: '3px' }}>
+                      <span>Commission Rate:</span>
+                      <span style={{ fontWeight: 600 }}>
+                        {hasDoctorCommission ? `${((selectedDoc.commissionBps || 0) / 100).toFixed(1)}%` : '0%'}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#334155', marginBottom: '3px' }}>
+                      <span>Original Commission:</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                        {formatPaiseToINR(quote.originalDoctorCommissionPaise || 0)}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#334155', marginBottom: '3px' }}>
+                      <span>Doctor-Borne Discount:</span>
+                      <span style={{ fontWeight: 600, color: (quote.actualDoctorDiscountPaise || 0) > 0 ? '#dc2626' : '#64748b' }}>
+                        - {formatPaiseToINR(quote.actualDoctorDiscountPaise || 0)}
+                      </span>
+                    </div>
+
+                    {quote.unallocatedDiscountPaise > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#b45309', marginBottom: '3px' }}>
+                        <span>Unallocated Excess Discount:</span>
+                        <span style={{ fontWeight: 600 }}>{formatPaiseToINR(quote.unallocatedDiscountPaise)}</span>
+                      </div>
+                    )}
+
+                    <div
+                      style={{
+                        borderTop: '1px solid #bbf7d0',
+                        paddingTop: '6px',
+                        marginTop: '6px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        color: '#166534',
+                      }}
+                    >
+                      <span>Final Commission Payable:</span>
+                      <span>{formatPaiseToINR(quote.finalDoctorCommissionPaise || 0)}</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* GST Slab Breakdown */}
                 {quote.taxSlabs.length > 0 && (

@@ -49,6 +49,7 @@ export interface GstTaxSlabBreakdown {
     igstPaise: number;
     totalTaxPaise: number;
 }
+export type DiscountAllocationMethod = 'STORE' | 'DOCTOR' | 'BOTH';
 export interface BillingCalculationInput {
     calculationVersion?: number;
     items: BillingLineItemInput[];
@@ -57,6 +58,7 @@ export interface BillingCalculationInput {
     customerStateCode?: string;
     enableDoctorCommission?: boolean;
     doctorCommissionBps?: number;
+    discountAllocationMethod?: DiscountAllocationMethod;
     roundOffToRupee?: boolean;
 }
 export interface BillingQuoteResult {
@@ -73,6 +75,15 @@ export interface BillingQuoteResult {
     roundOffPaise: number;
     netPayablePaise: number;
     taxSlabs: GstTaxSlabBreakdown[];
+    doctorCommissionBps?: number;
+    originalDoctorCommissionPaise: number;
+    discountAllocationMethod: DiscountAllocationMethod;
+    nominalStoreDiscountPaise: number;
+    nominalDoctorDiscountPaise: number;
+    actualStoreDiscountPaise: number;
+    actualDoctorDiscountPaise: number;
+    unallocatedDiscountPaise: number;
+    finalDoctorCommissionPaise: number;
     doctorCommissionPaise: number;
     isInterState: boolean;
 }
@@ -110,6 +121,39 @@ export interface InvoiceRecord {
     hasScheduleH: boolean;
     billerUid: string;
     idempotencyKey?: string;
+    doctorCommissionBps?: number;
+    originalDoctorCommissionPaise?: number;
+    discountAllocationMethod?: DiscountAllocationMethod;
+    nominalStoreDiscountPaise?: number;
+    nominalDoctorDiscountPaise?: number;
+    actualStoreDiscountPaise?: number;
+    actualDoctorDiscountPaise?: number;
+    unallocatedDiscountPaise?: number;
+    finalDoctorCommissionPaise?: number;
+    createdAt: string;
+    updatedAt: string;
+}
+export interface DoctorCommissionRecord {
+    id: string;
+    storeId: string;
+    invoiceId: string;
+    invoiceNumber: string;
+    doctorId: string;
+    doctorName?: string;
+    commissionRateBps: number;
+    commissionBasis: 'GROSS_TOTAL_BEFORE_DISCOUNT';
+    originalGrossTotalPaise: number;
+    originalDoctorCommissionPaise: number;
+    patientDiscountBps: number;
+    totalPatientDiscountPaise: number;
+    discountAllocationMethod: DiscountAllocationMethod;
+    nominalStoreDiscountPaise: number;
+    nominalDoctorDiscountPaise: number;
+    actualStoreDiscountPaise: number;
+    actualDoctorDiscountPaise: number;
+    unallocatedDiscountPaise: number;
+    finalDoctorCommissionPaise: number;
+    invoiceStatus: InvoiceStatus;
     createdAt: string;
     updatedAt: string;
 }

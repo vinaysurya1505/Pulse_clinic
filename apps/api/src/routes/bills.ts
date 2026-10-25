@@ -26,6 +26,8 @@ const quoteSchema = z.object({
   ).min(1, 'Cart cannot be empty'),
   overallDiscountBps: z.number().int().min(0).max(10000).optional(),
   customerStateCode: z.string().optional(),
+  doctorId: z.string().optional(),
+  discountAllocationMethod: z.enum(['STORE', 'DOCTOR', 'BOTH']).optional(),
   enableDoctorCommission: z.boolean().optional(),
   doctorCommissionBps: z.number().int().min(0).max(10000).optional(),
   roundOffToRupee: z.boolean().optional(),
@@ -42,6 +44,7 @@ const finalizeBillSchema = z.object({
     })
   ).min(1, 'Cart cannot be empty'),
   overallDiscountBps: z.number().int().min(0).max(10000).optional(),
+  discountAllocationMethod: z.enum(['STORE', 'DOCTOR', 'BOTH']).optional(),
   paymentModes: z.array(
     z.object({
       mode: z.enum(['CASH', 'UPI', 'CARD']),

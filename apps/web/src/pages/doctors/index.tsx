@@ -29,8 +29,6 @@ export default function DoctorsPage() {
   const [modalError, setModalError] = useState<string | null>(null);
 
   const [formName, setFormName] = useState('');
-  const [formRegNumber, setFormRegNumber] = useState('');
-  const [formSpecialization, setFormSpecialization] = useState('General Medicine');
   const [formPhone, setFormPhone] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formHospitalClinic, setFormHospitalClinic] = useState('');
@@ -73,8 +71,6 @@ export default function DoctorsPage() {
   const openAddModal = () => {
     setEditingDoctor(null);
     setFormName('');
-    setFormRegNumber('');
-    setFormSpecialization('General Medicine');
     setFormPhone('');
     setFormEmail('');
     setFormHospitalClinic('');
@@ -87,12 +83,10 @@ export default function DoctorsPage() {
   const openEditModal = (doc: DoctorProfile) => {
     setEditingDoctor(doc);
     setFormName(doc.name);
-    setFormRegNumber(doc.registrationNumber);
-    setFormSpecialization(doc.specialization || 'General Medicine');
     setFormPhone(doc.phone || '');
     setFormEmail(doc.email || '');
     setFormHospitalClinic(doc.hospitalClinic || '');
-    setFormCommissionEnabled(doc.commissionEnabled);
+    setFormCommissionEnabled(doc.commissionEnabled === true);
     setFormCommissionPercent(((doc.commissionBps || 0) / 100).toString());
     setModalError(null);
     setIsAddModalOpen(true);
@@ -104,7 +98,17 @@ export default function DoctorsPage() {
     setModalLoading(true);
     setModalError(null);
 
-    const commissionBps = Math.round(parseFloat(formCommissionPercent || '0') * 100);
+    const commissionBps = formCommissionEnabled
+      ? Math.round(parseFloat(formCommissionPercent || '0') * 100)
+      : 0;
+
+    if (formCommissionEnabled) {
+      if (isNaN(commissionBps) || commissionBps < 0 || commissionBps > 10000) {
+        setModalError('Commission rate must be between 0% and 100%.');
+        setModalLoading(false);
+        return;
+      }
+    }
 
     try {
       if (editingDoctor) {
@@ -112,11 +116,9 @@ export default function DoctorsPage() {
           `/doctors/${editingDoctor.id}`,
           {
             name: formName.trim(),
-            registrationNumber: formRegNumber.trim(),
-            specialization: formSpecialization.trim(),
-            phone: formPhone.trim(),
-            email: formEmail.trim(),
-            hospitalClinic: formHospitalClinic.trim(),
+            phone: formPhone.trim() || undefined,
+            email: formEmail.trim() || undefined,
+            hospitalClinic: formHospitalClinic.trim() || undefined,
             commissionBps,
             commissionEnabled: formCommissionEnabled,
           },
@@ -125,11 +127,9 @@ export default function DoctorsPage() {
       } else {
         const payload: CreateDoctorInput = {
           name: formName.trim(),
-          registrationNumber: formRegNumber.trim(),
-          specialization: formSpecialization.trim(),
-          phone: formPhone.trim(),
-          email: formEmail.trim(),
-          hospitalClinic: formHospitalClinic.trim(),
+          phone: formPhone.trim() || undefined,
+          email: formEmail.trim() || undefined,
+          hospitalClinic: formHospitalClinic.trim() || undefined,
           commissionBps,
           commissionEnabled: formCommissionEnabled,
         };
@@ -751,54 +751,7 @@ export default function DoctorsPage() {
                   />
                 </div>
 
-                <div>
-                  <label
-                    style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}
-                  >
-                    Medical Reg. Number *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. MCI-2015-84920"
-                    value={formRegNumber}
-                    onChange={(e) => setFormRegNumber(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      backgroundColor: '#ffffff',
-                      color: '#0f172a',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
 
-                <div>
-                  <label
-                    style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}
-                  >
-                    Specialization
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Cardiologist / General"
-                    value={formSpecialization}
-                    onChange={(e) => setFormSpecialization(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      backgroundColor: '#ffffff',
-                      color: '#0f172a',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
 
                 <div>
                   <label
