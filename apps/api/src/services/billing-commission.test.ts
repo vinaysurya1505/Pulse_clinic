@@ -502,6 +502,48 @@ describe('PulseClinic Billing, Doctor Commission, Discount Allocation & GST Test
       assert.strictEqual(quote.taxTotalPaise, 10000); // ₹100 total tax
       assert.strictEqual(quote.grandTotalPaise, 90000); // ₹900 grand total
     });
+
+    it('correctly handles manual state names for intra-state and inter-state GST', () => {
+      // Intra-state using manual state name 'Karnataka'
+      const intraQuote = calculateBillingQuote({
+        items: [
+          {
+            medicineId: 'm1',
+            batchId: 'b1',
+            quantityUnits: 1,
+            unitPricePaise: 10000,
+            gstRateBps: 1800,
+          },
+        ],
+        storeStateCode: '29',
+        customerStateCode: 'Karnataka',
+        roundOffToRupee: false,
+      });
+      assert.strictEqual(intraQuote.isInterState, false);
+      assert.strictEqual(intraQuote.cgstTotalPaise, 900);
+      assert.strictEqual(intraQuote.sgstTotalPaise, 900);
+      assert.strictEqual(intraQuote.igstTotalPaise, 0);
+
+      // Inter-state using manual state name 'Maharashtra'
+      const interQuote = calculateBillingQuote({
+        items: [
+          {
+            medicineId: 'm1',
+            batchId: 'b1',
+            quantityUnits: 1,
+            unitPricePaise: 10000,
+            gstRateBps: 1800,
+          },
+        ],
+        storeStateCode: '29',
+        customerStateCode: 'Maharashtra',
+        roundOffToRupee: false,
+      });
+      assert.strictEqual(interQuote.isInterState, true);
+      assert.strictEqual(interQuote.cgstTotalPaise, 0);
+      assert.strictEqual(interQuote.sgstTotalPaise, 0);
+      assert.strictEqual(interQuote.igstTotalPaise, 1800);
+    });
   });
 
   // =========================================================================

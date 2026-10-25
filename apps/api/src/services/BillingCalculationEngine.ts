@@ -128,8 +128,10 @@ export class BillingCalculationEngine {
 
       // Authoritative unit price from batch MRP & strip size
       const unitPricePaise = calculateUnitPrice(batch.mrpPaise, medicine.stripSize || 1);
-      // Section 6: Use configured medicine GST rate from backend catalogue (ignore client-supplied overrides)
-      const gstRateBps = medicine.gstRateBps || 0;
+      // Use manually entered GST rate if provided by accountant; otherwise default to catalogue rate
+      const gstRateBps = reqItem.customGstRateBps !== undefined
+        ? Math.max(0, reqItem.customGstRateBps)
+        : (medicine.gstRateBps || 0);
 
       verifiedLineItems.push({
         medicineId: reqItem.medicineId,

@@ -24,6 +24,8 @@ interface CartItem {
   availableBatches: BatchInventory[];
   quantityUnits: number;
   discountBps: number;
+  customGstRateBps?: number;
+  gstInput?: string;
 }
 
 export default function NewBillingPage() {
@@ -275,6 +277,7 @@ export default function NewBillingPage() {
           return updated;
         }
 
+        const initGstBps = medicine.gstRateBps ?? 0;
         return [
           ...prev,
           {
@@ -283,6 +286,8 @@ export default function NewBillingPage() {
             availableBatches: sorted,
             quantityUnits: medicine.stripSize || 1,
             discountBps: 0,
+            customGstRateBps: initGstBps,
+            gstInput: initGstBps > 0 ? (initGstBps / 100).toString() : '0',
           },
         ];
       });
@@ -309,9 +314,10 @@ export default function NewBillingPage() {
             batchId: item.selectedBatch.id,
             quantityUnits: item.quantityUnits,
             discountBps: item.discountBps,
+            customGstRateBps: item.customGstRateBps,
           })),
           overallDiscountBps,
-          customerStateCode,
+          customerStateCode: customerStateCode.trim() || undefined,
           doctorId: selectedDoctorId || undefined,
           discountAllocationMethod,
           roundOffToRupee: true,
@@ -370,6 +376,24 @@ export default function NewBillingPage() {
     });
   };
 
+  const updateCartItemGst = (index: number, valStr: string) => {
+    const clean = valStr.replace(/[^0-9.]/g, '');
+    const parts = clean.split('.');
+    const sanitized = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : clean;
+    const num = parseFloat(sanitized);
+    const bps = isNaN(num) ? 0 : Math.round(Math.max(0, Math.min(100, num)) * 100);
+
+    setCartItems((prev) => {
+      const next = [...prev];
+      next[index] = {
+        ...next[index],
+        gstInput: sanitized,
+        customGstRateBps: bps,
+      };
+      return next;
+    });
+  };
+
   const removeCartItem = (index: number) => {
     setCartItems((prev) => prev.filter((_, i) => i !== index));
   };
@@ -419,6 +443,7 @@ export default function NewBillingPage() {
           batchId: it.selectedBatch.id,
           quantityUnits: it.quantityUnits,
           discountBps: it.discountBps,
+          customGstRateBps: it.customGstRateBps,
         })),
         overallDiscountBps,
         discountAllocationMethod,
@@ -426,7 +451,7 @@ export default function NewBillingPage() {
         customer: {
           name: customerName.trim() || undefined,
           phone: customerPhone.trim() || undefined,
-          stateCode: customerStateCode,
+          stateCode: customerStateCode.trim() || undefined,
         },
         doctorId: selectedDoctorId || undefined,
         doctorName: selectedDoc?.name || undefined,
@@ -875,6 +900,7 @@ export default function NewBillingPage() {
                         <th style={{ padding: '12px 14px' }}>Batch (FEFO)</th>
                         <th style={{ padding: '12px 14px' }}>Unit Price</th>
                         <th style={{ padding: '12px 14px' }}>Quantity</th>
+                        <th style={{ padding: '12px 14px' }}>GST %</th>
                         <th style={{ padding: '12px 14px' }}>Line Total</th>
                         <th style={{ padding: '12px 14px', textAlign: 'right' }}>Action</th>
                       </tr>
@@ -970,6 +996,31 @@ export default function NewBillingPage() {
                               </div>
                             </td>
 
+                            <td style={{ padding: '12px 14px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="0"
+                                  value={
+                                    item.gstInput !== undefined
+                                      ? item.gstInput
+                                      : (item.customGstRateBps ? (item.customGstRateBps / 100).toString() : '0')
+                                  }
+                                  onChange={(e) => updateCartItemGst(idx, e.target.value)}
+                                  style={{
+                                    width: '48px',
+                                    padding: '4px 6px',
+                                    textAlign: 'center',
+                                    borderRadius: '4px',
+                                    border: '1px solid #cbd5e1',
+                                    fontSize: '13px',
+                                  }}
+                                />
+                                <span style={{ fontSize: '11px', color: '#64748b' }}>%</span>
+                              </div>
+                            </td>
+
                             <td style={{ padding: '12px 14px', fontWeight: 600, color: '#0f172a' }}>
                               {formatPaiseToINR(grossLine)}
                             </td>
@@ -1056,7 +1107,10 @@ export default function NewBillingPage() {
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
                     Customer State (GST)
                   </label>
-                  <select
+                  <input
+                    type="text"
+                    id="pos-customer-state-input"
+                    placeholder="Enter state code or name (e.g. 29)"
                     value={customerStateCode}
                     onChange={(e) => setCustomerStateCode(e.target.value)}
                     style={{
@@ -1067,13 +1121,7 @@ export default function NewBillingPage() {
                       fontSize: '13px',
                       backgroundColor: '#ffffff',
                     }}
-                  >
-                    <option value="29">29 - Karnataka (Intra-state CGST+SGST)</option>
-                    <option value="27">27 - Maharashtra (Inter-state IGST)</option>
-                    <option value="33">33 - Tamil Nadu (Inter-state IGST)</option>
-                    <option value="07">07 - Delhi (Inter-state IGST)</option>
-                    <option value="36">36 - Telangana (Inter-state IGST)</option>
-                  </select>
+                  />
                 </div>
 
                 <div style={{ gridColumn: 'span 2' }}>

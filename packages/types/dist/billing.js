@@ -1,16 +1,45 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CURRENT_CALCULATION_VERSION = void 0;
+exports.normalizeGstStateCode = normalizeGstStateCode;
 exports.calculateBillingQuote = calculateBillingQuote;
 exports.CURRENT_CALCULATION_VERSION = 1;
+const STATE_MAP = {
+    '01': '01', 'jammu and kashmir': '01', 'jk': '01',
+    '02': '02', 'himachal pradesh': '02', 'hp': '02',
+    '03': '03', 'punjab': '03', 'pb': '03',
+    '04': '04', 'chandigarh': '04', 'ch': '04',
+    '05': '05', 'uttarakhand': '05', 'uk': '05',
+    '06': '06', 'haryana': '06', 'hr': '06',
+    '07': '07', 'delhi': '07', 'dl': '07',
+    '08': '08', 'rajasthan': '08', 'rj': '08',
+    '09': '09', 'uttar pradesh': '09', 'up': '09',
+    '10': '10', 'bihar': '10', 'br': '10',
+    '19': '19', 'west bengal': '19', 'wb': '19',
+    '23': '23', 'madhya pradesh': '23', 'mp': '23',
+    '24': '24', 'gujarat': '24', 'gj': '24',
+    '27': '27', 'maharashtra': '27', 'mh': '27',
+    '29': '29', 'karnataka': '29', 'ka': '29',
+    '30': '30', 'goa': '30', 'ga': '30',
+    '32': '32', 'kerala': '32', 'kl': '32',
+    '33': '33', 'tamil nadu': '33', 'tn': '33',
+    '36': '36', 'telangana': '36', 'ts': '36', 'tg': '36',
+    '37': '37', 'andhra pradesh': '37', 'ap': '37',
+};
+function normalizeGstStateCode(codeOrName) {
+    if (!codeOrName)
+        return '29';
+    const clean = codeOrName.trim().toLowerCase();
+    return STATE_MAP[clean] || clean;
+}
 /**
  * Version 1 Billing Calculation Engine (Prompt 11, ADR-007, ADR-008, ADR-009)
  * Pure integer paise arithmetic with zero floating point drift.
  */
 function calculateBillingQuote(input) {
     const version = input.calculationVersion || exports.CURRENT_CALCULATION_VERSION;
-    const storeState = (input.storeStateCode || '29').trim();
-    const customerState = (input.customerStateCode || storeState).trim();
+    const storeState = normalizeGstStateCode(input.storeStateCode || '29');
+    const customerState = normalizeGstStateCode(input.customerStateCode || storeState);
     const isInterState = customerState !== storeState;
     const defaultOverallDiscount = Math.max(0, input.overallDiscountBps || 0);
     const calculatedItems = [];

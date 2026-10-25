@@ -20,6 +20,7 @@ export interface FinalizeBillInput {
     batchId: string;
     quantityUnits: number;
     discountBps?: number;
+    customGstRateBps?: number;
   }>;
   overallDiscountBps?: number;
   discountAllocationMethod?: DiscountAllocationMethod;

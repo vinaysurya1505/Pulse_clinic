@@ -87,6 +87,7 @@ export interface BillingQuoteResult {
     doctorCommissionPaise: number;
     isInterState: boolean;
 }
+export declare function normalizeGstStateCode(codeOrName?: string): string;
 /**
  * Version 1 Billing Calculation Engine (Prompt 11, ADR-007, ADR-008, ADR-009)
  * Pure integer paise arithmetic with zero floating point drift.
