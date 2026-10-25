@@ -53,13 +53,12 @@ describe('Prompt 27: Complete End-to-End Automated Testing Suite', () => {
   });
 
   // Test 3: Monotonic Invoice Number Formatting
-  it('3. Sequential Invoicing: validates INV-YYYYMM-XXXXXX formatting', () => {
-    const yearMonth = '202610';
-    const counter = 42;
-    const invoiceNumber = `INV-${yearMonth}-${String(counter).padStart(6, '0')}`;
+  it('3. Sequential Invoicing: validates SMSC1001 sequential formatting', () => {
+    const counter = 1001;
+    const invoiceNumber = `SMSC${counter}`;
 
-    assert.strictEqual(invoiceNumber, 'INV-202610-000042');
-    assert.match(invoiceNumber, /^INV-\d{6}-\d{6}$/);
+    assert.strictEqual(invoiceNumber, 'SMSC1001');
+    assert.match(invoiceNumber, /^SMSC\d+$/);
   });
 
   // Test 4: Approval Code Generation & AES-256-GCM Outbox

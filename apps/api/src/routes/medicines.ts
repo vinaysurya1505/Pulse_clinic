@@ -28,23 +28,19 @@ const scheduleEnum = z.enum([
   ScheduleCategories.X,
 ]);
 
-const validGstBps = [0, 500, 1200, 1800, 2800] as const;
-
 const createMedicineSchema = z.object({
   brandName: z.string().min(1, 'Brand name is required').trim(),
   genericName: z.string().min(1, 'Generic name is required').trim(),
   category: z.string().min(1, 'Category is required').trim(),
   dosageForm: z.string().min(1, 'Dosage form is required').trim(),
   strength: z.string().min(1, 'Strength is required').trim(),
-  manufacturer: z.string().optional(),
-  hsnCode: z.string().min(2, 'HSN code is required').trim(),
-  gstRateBps: z.number().refine((val) => (validGstBps as readonly number[]).includes(val), {
-    message: 'Invalid GST rate basis points. Must be 0, 500, 1200, 1800, or 2800.',
-  }),
+  manufacturer: z.string().optional().default(''),
+  hsnCode: z.string().trim().optional().default('3004'),
+  gstRateBps: z.number().int().min(0).max(10000).optional().default(0),
   baseUnit: baseUnitEnum,
   stripSize: z.number().int().min(1, 'Strip/pack size must be at least 1'),
-  allowLooseSales: z.boolean(),
-  scheduleCategory: scheduleEnum,
+  allowLooseSales: z.boolean().optional().default(true),
+  scheduleCategory: scheduleEnum.optional().default(ScheduleCategories.NONE),
   rackLocation: z.string().optional(),
   barcode: z.string().optional(),
   reorderLevelUnits: z.number().int().min(0).optional(),

@@ -253,48 +253,46 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick Launchpad */}
-        <div style={{ background: '#ffffff', padding: 'var(--space-md) var(--space-lg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-          <h2 style={{ fontSize: 'var(--font-sm)', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 var(--space-sm) 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Quick Operations Launchpad
-          </h2>
-          <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
-            <Link
-              href="/billing/new"
-              style={{ padding: '8px 14px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-xs)', fontWeight: 600, textDecoration: 'none' }}
+        {/* Quick Launchpad Dropdown */}
+        <div style={{ background: '#ffffff', padding: '14px 20px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+          <div>
+            <h2 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Quick Operations Launchpad
+            </h2>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+              Select an operational shortcut to navigate instantly.
+            </div>
+          </div>
+          <div style={{ minWidth: '300px' }}>
+            <select
+              aria-label="Quick operations launchpad shortcuts"
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  router.push(e.target.value);
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '9px 14px',
+                borderRadius: '8px',
+                border: '1.5px solid #2563eb',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#1e40af',
+                backgroundColor: '#eff6ff',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
             >
-              🧾 Cashier POS Terminal (F2)
-            </Link>
-            <Link
-              href="/billing/history"
-              style={{ padding: '8px 14px', background: '#f8fafc', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-xs)', fontWeight: 600, textDecoration: 'none' }}
-            >
-              📋 Bill History & Receipts
-            </Link>
-            <Link
-              href="/expenses"
-              style={{ padding: '8px 14px', background: '#f8fafc', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-xs)', fontWeight: 600, textDecoration: 'none' }}
-            >
-              💰 Expenses & Cash Drawer
-            </Link>
-            <Link
-              href="/inventory/medicines"
-              style={{ padding: '8px 14px', background: '#f8fafc', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-xs)', fontWeight: 600, textDecoration: 'none' }}
-            >
-              💊 Medicine Catalogue
-            </Link>
-            <Link
-              href="/inventory/batches"
-              style={{ padding: '8px 14px', background: '#f8fafc', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-xs)', fontWeight: 600, textDecoration: 'none' }}
-            >
-              📦 Batch FEFO Stock
-            </Link>
-            <Link
-              href="/imports/csv"
-              style={{ padding: '8px 14px', background: '#f8fafc', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-xs)', fontWeight: 600, textDecoration: 'none' }}
-            >
-              📁 CSV Inventory Ingestion
-            </Link>
+              <option value="" disabled>⚡ Choose Quick Operation...</option>
+              <option value="/billing/new">🧾 Cashier POS Terminal (F2)</option>
+              <option value="/billing/history">📋 Bill History & Receipts</option>
+              <option value="/expenses">💰 Expenses & Cash Drawer</option>
+              <option value="/inventory/medicines">💊 Medicine Catalogue</option>
+              <option value="/inventory/batches">📦 Batch FEFO Stock</option>
+              <option value="/imports/csv">📁 CSV Inventory Ingestion</option>
+            </select>
           </div>
         </div>
 

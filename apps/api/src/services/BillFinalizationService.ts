@@ -92,15 +92,14 @@ export class BillFinalizationService {
       // PHASE 2: CALCULATIONS & IN-MEMORY VALIDATION
       const nowObj = new Date();
       const yearMonth = `${nowObj.getFullYear()}${String(nowObj.getMonth() + 1).padStart(2, '0')}`;
-      let nextSeq = 1;
+      let nextSeq = 1001;
       if (counterDoc.exists) {
         const data = counterDoc.data();
-        if (data?.yearMonth === yearMonth) {
-          nextSeq = (data.lastSequence || 0) + 1;
+        if (typeof data?.lastSequence === 'number' && data.lastSequence >= 1001) {
+          nextSeq = data.lastSequence + 1;
         }
       }
-      const formattedSeq = String(nextSeq).padStart(6, '0');
-      const invoiceNumber = `INV-${yearMonth}-${formattedSeq}`;
+      const invoiceNumber = `SMSC${nextSeq}`;
 
       // Verify stock availability inside transaction
       for (let i = 0; i < quote.items.length; i++) {

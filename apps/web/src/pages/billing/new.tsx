@@ -49,6 +49,17 @@ export default function NewBillingPage() {
   // Cart State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [overallDiscountBps, setOverallDiscountBps] = useState(0);
+  const [discountInput, setDiscountInput] = useState('0');
+
+  // Debounce discountInput to allow smooth multi-digit typing without interrupting recalculation
+  useEffect(() => {
+    const val = parseFloat(discountInput);
+    const bps = isNaN(val) ? 0 : Math.round(Math.max(0, Math.min(100, val)) * 100);
+    const timer = setTimeout(() => {
+      setOverallDiscountBps(bps);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [discountInput]);
 
   // Quote State
   const [quote, setQuote] = useState<BillingQuoteResult | null>(null);
@@ -360,12 +371,6 @@ export default function NewBillingPage() {
     setCartItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const hasScheduleH = useMemo(() => {
-    return cartItems.some(
-      (it) => it.medicine.scheduleCategory && ['H', 'H1', 'X'].includes(it.medicine.scheduleCategory)
-    );
-  }, [cartItems]);
-
   // Payment Modal Helpers
   const openPaymentModal = () => {
     if (!quote) return;
@@ -453,6 +458,8 @@ export default function NewBillingPage() {
 
         // Reset cart
         setCartItems([]);
+        setOverallDiscountBps(0);
+        setDiscountInput('0');
         setCustomerName('');
         setCustomerPhone('');
         setSelectedDoctorId('');
@@ -554,31 +561,7 @@ export default function NewBillingPage() {
           </div>
         </div>
 
-        {/* Schedule H Prescription Safety Alert Banner */}
-        {hasScheduleH && (
-          <div
-            style={{
-              backgroundColor: '#fffbeb',
-              border: '1px solid #fde68a',
-              borderRadius: '10px',
-              padding: '12px 16px',
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-            }}
-          >
-            <span style={{ fontSize: '20px' }}>⚠️</span>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#92400e' }}>
-                Schedule H / H1 / X Prescription Drug in Cart
-              </div>
-              <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px' }}>
-                CDSCO regulations mandate selecting the registered prescribing medical practitioner.
-              </div>
-            </div>
-          </div>
-        )}
+        {/* POS Split Terminal Layout: Left Cart & Search, Right Checkout Summary */}
 
         {/* POS Split Terminal Layout: Left Cart & Search, Right Checkout Summary */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '20px', alignItems: 'start' }}>
@@ -978,18 +961,19 @@ export default function NewBillingPage() {
                             <td style={{ padding: '12px 14px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="any"
+                                  type="text"
+                                  inputMode="decimal"
                                   value={
                                     item.customGstRateBps !== undefined
                                       ? (item.customGstRateBps / 100).toString()
                                       : ((item.medicine.gstRateBps || 0) / 100).toString()
                                   }
                                   onChange={(e) => {
-                                    const val = parseFloat(e.target.value);
-                                    updateCartItemGst(idx, isNaN(val) ? 0 : Math.round(val * 100));
+                                    const val = e.target.value;
+                                    if (/^\d*\.?\d*$/.test(val)) {
+                                      const num = parseFloat(val);
+                                      updateCartItemGst(idx, isNaN(num) ? 0 : Math.round(num * 100));
+                                    }
                                   }}
                                   aria-label="GST Percentage"
                                   title="Enter manual GST percentage"
@@ -1003,6 +987,7 @@ export default function NewBillingPage() {
                                     fontWeight: 600,
                                     color: '#0f172a',
                                     backgroundColor: '#ffffff',
+                                    outline: 'none',
                                   }}
                                 />
                                 <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>%</span>
@@ -1190,45 +1175,70 @@ export default function NewBillingPage() {
               top: '80px',
             }}
           >
-            <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>
-              Billing Summary
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Billing Summary</span>
+              {quoteLoading && (
+                <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600 }}>• calculating...</span>
+              )}
             </div>
 
-            {quoteLoading ? (
-              <div style={{ padding: '30px 0', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
-                Recalculating quote...
-              </div>
-            ) : quoteError ? (
+            {quoteError && (
               <div
                 style={{
-                  padding: '12px',
+                  padding: '10px 12px',
                   backgroundColor: '#fef2f2',
                   border: '1px solid #fecaca',
                   borderRadius: '8px',
                   color: '#b91c1c',
                   fontSize: '12px',
-                  marginBottom: '16px',
+                  marginBottom: '14px',
                 }}
               >
                 {quoteError}
               </div>
-            ) : !quote ? (
+            )}
+
+            {!quote ? (
               <div style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center', padding: '30px 0' }}>
-                Add items to see invoice quote.
+                {quoteLoading ? 'Calculating live quote...' : 'Add items to see invoice quote.'}
               </div>
             ) : (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', backgroundColor: '#f8fafc', padding: '8px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>Cart Discount (%)</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={overallDiscountBps / 100}
-                    onChange={(e) => setOverallDiscountBps(Math.round(parseFloat(e.target.value || '0') * 100))}
-                    style={{ width: '64px', padding: '4px 6px', fontSize: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', textAlign: 'right' }}
-                  />
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>Cart Discount</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={discountInput}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (/^\d*\.?\d*$/.test(v)) {
+                          setDiscountInput(v);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!discountInput || isNaN(parseFloat(discountInput))) {
+                          setDiscountInput('0');
+                        }
+                      }}
+                      placeholder="0"
+                      id="pos-cart-discount-input"
+                      style={{
+                        width: '56px',
+                        padding: '4px 6px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        borderRadius: '4px',
+                        border: '1px solid #cbd5e1',
+                        textAlign: 'right',
+                        backgroundColor: '#ffffff',
+                        color: '#0f172a',
+                        outline: 'none',
+                      }}
+                    />
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>%</span>
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#475569' }}>
@@ -1639,6 +1649,7 @@ export default function NewBillingPage() {
             {/* 80mm Compact Thermal Receipt Layout Preview */}
             <div
               id="thermal-receipt-preview"
+              className="printable-receipt-card"
               style={{
                 border: '1px dashed #cbd5e1',
                 padding: '16px',

@@ -862,6 +862,7 @@ export default function BillingHistoryPage() {
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <div
                       id="thermal-receipt-container"
+                      className="printable-receipt-card"
                       style={{
                         width: '320px',
                         background: '#ffffff',

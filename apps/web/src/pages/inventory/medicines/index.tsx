@@ -11,7 +11,6 @@ import {
   BaseUnits,
   BaseUnit,
   ScheduleCategories,
-  ScheduleCategory,
 } from '@pulseclinic/types';
 
 interface MedicineListResponse {
@@ -32,14 +31,6 @@ const CATEGORIES = [
   'Neurological',
   'Ophthalmic & ENT',
   'Other',
-];
-
-const GST_SLABS = [
-  { label: '0% (Exempt)', bps: 0 },
-  { label: '5% (Essential)', bps: 500 },
-  { label: '12% (Standard Pharma)', bps: 1200 },
-  { label: '18% (Supplements/Cosmeceuticals)', bps: 1800 },
-  { label: '28% (Special)', bps: 2800 },
 ];
 
 export default function MedicinesPage() {
@@ -138,7 +129,7 @@ export default function MedicinesPage() {
       strength: '500mg',
       manufacturer: '',
       hsnCode: '3004',
-      gstRateBps: 1200,
+      gstRateBps: 0,
       baseUnit: BaseUnits.TABLET,
       stripSize: 10,
       allowLooseSales: true,
@@ -1016,107 +1007,10 @@ export default function MedicinesPage() {
                     </div>
                   </div>
 
-                  {/* Section 3: Regulatory & Tax */}
+                  {/* Section 3: Physical Storage & Alerts */}
                   <div style={{ paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
                     <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
-                      3. Regulatory & GST Classification
-                    </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                          Drug Schedule *
-                        </label>
-                        <select
-                          value={formData.scheduleCategory}
-                          onChange={(e) => setFormData({ ...formData, scheduleCategory: e.target.value as ScheduleCategory })}
-                          style={{
-                            width: '100%',
-                            padding: '9px 12px',
-                            borderRadius: '8px',
-                            border: '1px solid #cbd5e1',
-                            fontSize: '14px',
-                            color: '#0f172a',
-                            backgroundColor: '#ffffff'
-                          }}
-                        >
-                          <option value={ScheduleCategories.NONE}>Regular (Over-The-Counter / Non-scheduled)</option>
-                          <option value={ScheduleCategories.H}>Schedule H (Mandatory Rx)</option>
-                          <option value={ScheduleCategories.H1}>Schedule H1 (Critical Antibiotic / Habit Forming)</option>
-                          <option value={ScheduleCategories.X}>Schedule X (Psychotropic / Strict Narcotic)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                          GST Tax Slab *
-                        </label>
-                        <select
-                          value={formData.gstRateBps}
-                          onChange={(e) => setFormData({ ...formData, gstRateBps: parseInt(e.target.value, 10) })}
-                          style={{
-                            width: '100%',
-                            padding: '9px 12px',
-                            borderRadius: '8px',
-                            border: '1px solid #cbd5e1',
-                            fontSize: '14px',
-                            color: '#0f172a',
-                            backgroundColor: '#ffffff'
-                          }}
-                        >
-                          {GST_SLABS.map((slab) => (
-                            <option key={slab.bps} value={slab.bps}>
-                              {slab.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                          HSN Code *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.hsnCode}
-                          onChange={(e) => setFormData({ ...formData, hsnCode: e.target.value })}
-                          placeholder="e.g. 3004"
-                          style={{
-                            width: '100%',
-                            padding: '9px 12px',
-                            borderRadius: '8px',
-                            border: '1px solid #cbd5e1',
-                            fontSize: '14px',
-                            color: '#0f172a',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                          Manufacturer / Marketer
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.manufacturer || ''}
-                          onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
-                          placeholder="e.g. Micro Labs Ltd, GSK"
-                          style={{
-                            width: '100%',
-                            padding: '9px 12px',
-                            borderRadius: '8px',
-                            border: '1px solid #cbd5e1',
-                            fontSize: '14px',
-                            color: '#0f172a',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Section 4: Physical Storage & Alerts */}
-                  <div style={{ paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
-                    <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
-                      4. Storage Location & Reorder Alert
+                      3. Storage Location & Reorder Alert
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
                       <div>
