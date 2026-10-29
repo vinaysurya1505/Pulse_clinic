@@ -54,7 +54,7 @@ export default function FinancialReportPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Financial Sales & Tax Report | PulseClinic</title>
+        <title>Financial Sales & Tax Report | New Sanjivani Clinic</title>
       </Head>
 
       <div style={{ padding: 'var(--space-lg)', maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>

@@ -60,7 +60,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         fontSize: '15px',
         fontWeight: 600,
       }}>
-        Loading PulseClinic Pharmacy Console...
+        Loading New Sanjivani Clinic Console...
       </div>
     );
   }
@@ -76,7 +76,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
-      <div style={{ flex: 1, marginLeft: 'var(--sidebar-width)' }}>
+      <div style={{ flex: 1, marginLeft: 'var(--sidebar-width)', minWidth: 0 }}>
         <TopBar />
         <main
           id="main-content"
@@ -86,6 +86,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             padding: 'var(--space-lg)',
             minHeight: `calc(100vh - var(--topbar-height))`,
             outline: 'none',
+            overflowX: 'hidden',
           }}
         >
           {children}

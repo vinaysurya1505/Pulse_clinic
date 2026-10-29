@@ -320,7 +320,7 @@ export default function NewBillingPage() {
           customerStateCode: customerStateCode.trim() || undefined,
           doctorId: selectedDoctorId || undefined,
           discountAllocationMethod,
-          roundOffToRupee: true,
+          roundOffToRupee: false,
         };
 
         const res = await apiPost<{ success: boolean; quote: BillingQuoteResult }>(
@@ -473,7 +473,6 @@ export default function NewBillingPage() {
           igstTotalPaise: quote.igstTotalPaise,
           taxTotalPaise: quote.taxTotalPaise,
           grandTotalPaise: quote.grandTotalPaise,
-          roundOffPaise: quote.roundOffPaise,
           netPayablePaise: quote.netPayablePaise,
           paymentModes,
           customer: {
@@ -513,7 +512,7 @@ export default function NewBillingPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Cashier POS Terminal | PulseClinic</title>
+        <title>Cashier POS Terminal | New Sanjivani Clinic</title>
         <meta
           name="description"
           content="Fast cashier POS terminal with FEFO batch selection, Schedule H validation, and GST invoice finalization."
@@ -1345,13 +1344,6 @@ export default function NewBillingPage() {
                   </>
                 )}
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '13px', color: '#475569' }}>
-                  <span>Round-off Adjustment</span>
-                  <span style={{ fontWeight: 600, color: quote.roundOffPaise < 0 ? '#ef4444' : '#64748b' }}>
-                    {quote.roundOffPaise >= 0 ? '+' : ''}{formatPaiseToINR(quote.roundOffPaise)}
-                  </span>
-                </div>
-
                 <div
                   style={{
                     borderTop: '2px solid #e2e8f0',
@@ -1812,10 +1804,16 @@ export default function NewBillingPage() {
               }}
             >
               <div style={{ textAlign: 'center', fontWeight: 700, fontSize: '14px' }}>
-                {activeStore?.storeName || 'PULSECLINIC PHARMACY'}
+                {activeStore?.storeName || 'New Sanjivani Multispeciality Clinic'}
               </div>
               <div style={{ textAlign: 'center', fontSize: '11px', color: '#64748b' }}>
-                GSTIN: 29AABCU9603R1ZM • Reg: DL-2024-KA-8492
+                Beside Hero Bike Agency, In Front of Rajesh Mani Inter College,
+              </div>
+              <div style={{ textAlign: 'center', fontSize: '11px', color: '#64748b' }}>
+                Padrauna Road, Naurangia, Kushinagar 274305
+              </div>
+              <div style={{ textAlign: 'center', fontSize: '11px', color: '#64748b' }}>
+                Ph: 8114000119 / 8004807785
               </div>
               <div style={{ borderBottom: '1px dashed #94a3b8', margin: '8px 0' }} />
 
@@ -1831,7 +1829,7 @@ export default function NewBillingPage() {
               )}
               <div style={{ borderBottom: '1px dashed #94a3b8', margin: '8px 0' }} />
 
-              {/* Line Items */}
+              {/* Line Items — show full MRP price per line */}
               {finalizedInvoice.items?.map((it: CalculatedLineItem) => (
                 <div key={`${it.medicineId}-${it.batchId}`} style={{ marginBottom: '4px' }}>
                   <div style={{ fontWeight: 600 }}>{it.medicineName}</div>
@@ -1840,7 +1838,7 @@ export default function NewBillingPage() {
                       {it.quantityUnits} x {formatPaiseToINR(it.unitPricePaise)}
                     </span>
                     <span style={{ fontWeight: 600, color: '#0f172a' }}>
-                      {formatPaiseToINR(it.lineTotalPaise)}
+                      {formatPaiseToINR(it.grossLinePaise)}
                     </span>
                   </div>
                 </div>
@@ -1850,15 +1848,21 @@ export default function NewBillingPage() {
 
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Subtotal:</span>
-                <span>{formatPaiseToINR(finalizedInvoice.taxableTotalPaise)}</span>
+                <span>{formatPaiseToINR(finalizedInvoice.grossTotalPaise)}</span>
               </div>
+              {finalizedInvoice.totalDiscountPaise > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
+                  <span>Discount{finalizedInvoice.items?.[0]?.discountBps > 0 ? ` (${(finalizedInvoice.items[0].discountBps / 100).toFixed(finalizedInvoice.items[0].discountBps % 100 === 0 ? 0 : 1)}%)` : ''}:</span>
+                  <span>-{formatPaiseToINR(finalizedInvoice.totalDiscountPaise)}</span>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Total Tax (GST):</span>
                 <span>{formatPaiseToINR(finalizedInvoice.taxTotalPaise)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '14px', marginTop: '4px' }}>
                 <span>GRAND TOTAL:</span>
-                <span>{formatPaiseToINR(finalizedInvoice.netPayablePaise)}</span>
+                <span>{formatPaiseToINR(finalizedInvoice.grandTotalPaise)}</span>
               </div>
 
               <div style={{ borderBottom: '1px dashed #94a3b8', margin: '8px 0' }} />

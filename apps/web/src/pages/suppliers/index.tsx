@@ -222,7 +222,7 @@ export default function SuppliersPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Suppliers Directory & Accounts | PulseClinic</title>
+        <title>Suppliers Directory & Accounts | New Sanjivani Clinic</title>
         <meta name="description" content="Manage pharmaceutical distributors, credit payment terms, and supplier ledgers." />
       </Head>
 

@@ -68,7 +68,7 @@ export default function AuditLogsPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Audit Logs & Security Explorer | PulseClinic</title>
+        <title>Audit Logs & Security Explorer | New Sanjivani Clinic</title>
       </Head>
 
       <div style={{ padding: 'var(--space-lg)', maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>

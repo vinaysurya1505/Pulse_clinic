@@ -393,7 +393,7 @@ export default function BatchesPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Batch Inventory & FEFO Engine | PulseClinic</title>
+        <title>Batch Inventory & FEFO Engine | New Sanjivani Clinic</title>
         <meta name="description" content="FEFO batch tracking, expiry monitoring, and immutable stock movement ledger." />
       </Head>
 

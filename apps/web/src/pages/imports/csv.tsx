@@ -168,7 +168,7 @@ export default function CSVImportPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Dynamic CSV Inventory Import | PulseClinic</title>
+        <title>Dynamic CSV Inventory Import | New Sanjivani Clinic</title>
         <meta name="description" content="Dynamic write-budget CSV bulk import for medicines and batches with pre-ingestion validation." />
       </Head>
 

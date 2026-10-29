@@ -103,7 +103,7 @@ export default function DashboardPage() {
   if (authLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f8fafc', color: '#64748b', fontSize: '15px', fontWeight: 600 }}>
-        Loading PulseClinic Pharmacy Console...
+        Loading New Sanjivani Clinic Console...
       </div>
     );
   }
@@ -113,7 +113,7 @@ export default function DashboardPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Dashboard | PulseClinic</title>
+        <title>Dashboard | New Sanjivani Clinic</title>
       </Head>
 
       <div style={{ padding: 'var(--space-lg)', maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>

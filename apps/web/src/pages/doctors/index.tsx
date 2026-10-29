@@ -187,10 +187,10 @@ export default function DoctorsPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Doctor Registry | PulseClinic Pharmacy Console</title>
+        <title>Doctor Registry | New Sanjivani Clinic</title>
         <meta
           name="description"
-          content="Manage registered prescribing doctors, medical license numbers, and Schedule H prescription references in PulseClinic."
+          content="Manage registered prescribing doctors, medical license numbers, and Schedule H prescription references."
         />
       </Head>
 

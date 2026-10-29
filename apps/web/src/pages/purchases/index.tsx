@@ -273,7 +273,7 @@ export default function PurchasesPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Purchase Orders & GRN Receiving | PulseClinic</title>
+        <title>Purchase Orders & GRN Receiving | New Sanjivani Clinic</title>
         <meta name="description" content="Procurement lifecycle, supplier POs, and atomic Goods Received Note (GRN) batch ingestion." />
       </Head>
 

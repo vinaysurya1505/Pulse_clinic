@@ -153,10 +153,10 @@ export default function BillingHistoryPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Bill History & GST Register | PulseClinic</title>
+        <title>Bill History & GST Register | New Sanjivani Clinic</title>
       </Head>
 
-      <div style={{ padding: 'var(--space-lg)', maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', width: '100%' }}>
         {/* Page Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
           <div>
@@ -209,71 +209,71 @@ export default function BillingHistoryPage() {
         </div>
 
         {/* Metric Summary Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-md)' }}>
-          <div style={{ background: '#ffffff', padding: 'var(--space-md)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+          <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Total Bills Generated
             </div>
-            <div style={{ fontSize: 'var(--font-2xl)', fontWeight: 700, color: 'var(--color-text)', marginTop: '4px' }}>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-text)', marginTop: '2px' }}>
               {metrics.totalCount}
             </div>
-            <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
               {metrics.todayCount} created today
             </div>
           </div>
 
-          <div style={{ background: '#ffffff', padding: 'var(--space-md)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Total Net Sales
             </div>
-            <div style={{ fontSize: 'var(--font-2xl)', fontWeight: 700, color: '#059669', marginTop: '4px' }}>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: '#059669', marginTop: '2px' }}>
               ₹{metrics.totalNetSalesRupees}
             </div>
-            <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-              Round-off applied
+            <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+              Exact amount
             </div>
           </div>
 
-          <div style={{ background: '#ffffff', padding: 'var(--space-md)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               GST Output Tax
             </div>
-            <div style={{ fontSize: 'var(--font-2xl)', fontWeight: 700, color: '#2563eb', marginTop: '4px' }}>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: '#2563eb', marginTop: '2px' }}>
               ₹{metrics.totalTaxRupees}
             </div>
-            <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-              CGST + SGST / IGST collected
+            <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+              CGST + SGST collected
             </div>
           </div>
 
-          <div style={{ background: '#ffffff', padding: 'var(--space-md)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Avg Bill Value
             </div>
-            <div style={{ fontSize: 'var(--font-2xl)', fontWeight: 700, color: 'var(--color-text)', marginTop: '4px' }}>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-text)', marginTop: '2px' }}>
               ₹{metrics.totalCount > 0 ? (parseFloat(metrics.totalNetSalesRupees) / metrics.totalCount).toFixed(2) : '0.00'}
             </div>
-            <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-              Per customer transaction
+            <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+              Per transaction
             </div>
           </div>
         </div>
 
         {/* Filter and Search Bar */}
-        <div style={{ background: '#ffffff', padding: 'var(--space-md)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Search Box */}
-          <div style={{ flex: '1 1 300px', position: 'relative' }}>
+          <div style={{ flex: '1 1 260px', position: 'relative' }}>
             <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>
               🔍
             </span>
             <input
               type="text"
-              placeholder="Search by invoice number (INV-...), customer name, or phone..."
+              placeholder="Search invoice #, customer name, or phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: '100%',
-                padding: '9px 12px 9px 36px',
+                padding: '7px 12px 7px 34px',
                 border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-md)',
                 fontSize: 'var(--font-sm)',
@@ -286,7 +286,7 @@ export default function BillingHistoryPage() {
 
           {/* Status Filters */}
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <span style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--color-text-secondary)', marginRight: '4px' }}>
+            <span style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--color-text-secondary)', marginRight: '2px' }}>
               Status:
             </span>
             {(['ALL', 'FINALIZED', 'REFUNDED', 'CANCELLED'] as const).map((st) => (
@@ -294,7 +294,7 @@ export default function BillingHistoryPage() {
                 key={st}
                 onClick={() => setStatusFilter(st)}
                 style={{
-                  padding: '6px 12px',
+                  padding: '5px 10px',
                   borderRadius: 'var(--radius-full)',
                   fontSize: 'var(--font-xs)',
                   fontWeight: 600,
@@ -312,7 +312,7 @@ export default function BillingHistoryPage() {
 
           {/* Date Range Filters */}
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <span style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--color-text-secondary)', marginRight: '4px' }}>
+            <span style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--color-text-secondary)', marginRight: '2px' }}>
               Period:
             </span>
             {(['ALL', 'TODAY', 'WEEK', 'MONTH'] as const).map((d) => (
@@ -320,7 +320,7 @@ export default function BillingHistoryPage() {
                 key={d}
                 onClick={() => setDateRange(d)}
                 style={{
-                  padding: '6px 10px',
+                  padding: '5px 9px',
                   borderRadius: 'var(--radius-md)',
                   fontSize: 'var(--font-xs)',
                   fontWeight: 600,
@@ -349,28 +349,27 @@ export default function BillingHistoryPage() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 'var(--font-sm)' }}>
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Invoice #</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Date & Time</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Customer</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Prescriber</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Items</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Payment Mode</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Net Amount</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'center' }}>Status</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Actions</th>
+                <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', fontSize: '12px' }}>
+                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>Invoice #</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>Date & Time</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>Customer</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>Prescriber</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>Payment Mode</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'right' }}>Net Amount</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'center' }}>Status</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={9} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                    <td colSpan={8} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                       Loading invoice records...
                     </td>
                   </tr>
                 ) : filteredInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                    <td colSpan={8} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                       <div style={{ fontSize: '32px', marginBottom: '8px' }}>🧾</div>
                       <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: 'var(--font-base)' }}>
                         No invoices found
@@ -417,56 +416,22 @@ export default function BillingHistoryPage() {
                         onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
                       >
                         {/* Invoice Number */}
-                        <td style={{ padding: '14px 16px', fontWeight: 700, fontFamily: 'monospace' }}>
-                          <span
-                            onClick={() => openInvoiceDetails(inv, 'DETAILS')}
-                            style={{
-                              color: 'var(--color-primary)',
-                              cursor: 'pointer',
-                              background: '#eff6ff',
-                              padding: '3px 8px',
-                              borderRadius: '4px',
-                              border: '1px solid #bfdbfe',
-                            }}
-                          >
-                            {inv.invoiceNumber}
-                          </span>
-                        </td>
-
-                        {/* Date */}
-                        <td style={{ padding: '14px 16px', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
-                          {dateFormatted}
-                        </td>
-
-                        {/* Customer */}
-                        <td style={{ padding: '14px 16px' }}>
-                          <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                            {inv.customer?.name || 'Walk-in Guest'}
-                          </div>
-                          {inv.customer?.phone && (
-                            <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)' }}>
-                              📱 {inv.customer.phone}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Doctor */}
-                        <td style={{ padding: '14px 16px' }}>
-                          {inv.doctorName ? (
-                            <span style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: '4px', fontSize: 'var(--font-xs)', fontWeight: 500 }}>
-                              🩺 {inv.doctorName}
+                        <td style={{ padding: '10px 12px', fontWeight: 700, fontFamily: 'monospace' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <span
+                              onClick={() => openInvoiceDetails(inv, 'DETAILS')}
+                              style={{
+                                color: 'var(--color-primary)',
+                                cursor: 'pointer',
+                                background: '#eff6ff',
+                                padding: '2px 7px',
+                                borderRadius: '4px',
+                                border: '1px solid #bfdbfe',
+                                fontSize: '12px',
+                              }}
+                            >
+                              {inv.invoiceNumber}
                             </span>
-                          ) : (
-                            <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-xs)' }}>
-                              OTC (No Prescriber)
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Items */}
-                        <td style={{ padding: '14px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontWeight: 600 }}>{inv.items?.length || 0} items</span>
                             {inv.hasScheduleH && (
                               <span
                                 title="Contains Schedule H / Prescription drugs"
@@ -474,9 +439,9 @@ export default function BillingHistoryPage() {
                                   background: '#fffbeb',
                                   color: '#b45309',
                                   border: '1px solid #fde68a',
-                                  fontSize: '10px',
+                                  fontSize: '9px',
                                   fontWeight: 700,
-                                  padding: '1px 5px',
+                                  padding: '1px 4px',
                                   borderRadius: '3px',
                                 }}
                               >
@@ -486,8 +451,38 @@ export default function BillingHistoryPage() {
                           </div>
                         </td>
 
+                        {/* Date */}
+                        <td style={{ padding: '10px 12px', color: 'var(--color-text-secondary)', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                          {dateFormatted}
+                        </td>
+
+                        {/* Customer */}
+                        <td style={{ padding: '10px 12px', fontSize: '13px' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                            {inv.customer?.name || 'Walk-in Guest'}
+                          </div>
+                          {inv.customer?.phone && (
+                            <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                              📱 {inv.customer.phone}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Doctor */}
+                        <td style={{ padding: '10px 12px' }}>
+                          {inv.doctorName ? (
+                            <span style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 500 }}>
+                              🩺 {inv.doctorName}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-muted)', fontSize: '11px' }}>
+                              OTC (No Prescriber)
+                            </span>
+                          )}
+                        </td>
+
                         {/* Payment Modes */}
-                        <td style={{ padding: '14px 16px' }}>
+                        <td style={{ padding: '10px 12px' }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                             {inv.paymentModes?.map((pm, idx) => (
                               <span
@@ -500,6 +495,7 @@ export default function BillingHistoryPage() {
                                   background: pm.mode === 'CASH' ? '#ecfdf5' : pm.mode === 'UPI' ? '#eff6ff' : '#f5f3ff',
                                   color: pm.mode === 'CASH' ? '#047857' : pm.mode === 'UPI' ? '#1d4ed8' : '#6d28d9',
                                   border: `1px solid ${pm.mode === 'CASH' ? '#a7f3d0' : pm.mode === 'UPI' ? '#bfdbfe' : '#ddd6fe'}`,
+                                  whiteSpace: 'nowrap',
                                 }}
                               >
                                 {pm.mode}: ₹{(pm.amountPaise / 100).toFixed(2)}
@@ -509,17 +505,17 @@ export default function BillingHistoryPage() {
                         </td>
 
                         {/* Net Amount */}
-                        <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, fontSize: 'var(--font-base)', color: 'var(--color-text)' }}>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, fontSize: '14px', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
                           ₹{((inv.netPayablePaise || 0) / 100).toFixed(2)}
                         </td>
 
                         {/* Status */}
-                        <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                           <span
                             style={{
-                              padding: '4px 10px',
+                              padding: '3px 8px',
                               borderRadius: 'var(--radius-full)',
-                              fontSize: '11px',
+                              fontSize: '10px',
                               fontWeight: 700,
                               textTransform: 'uppercase',
                               background:
@@ -541,39 +537,49 @@ export default function BillingHistoryPage() {
                         </td>
 
                         {/* Actions */}
-                        <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                        <td style={{ padding: '10px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                             <button
                               id={`btn-view-${inv.invoiceNumber}`}
                               onClick={() => openInvoiceDetails(inv, 'DETAILS')}
+                              title="View Details"
                               style={{
-                                padding: '5px 10px',
+                                width: '32px',
+                                height: '32px',
+                                padding: 0,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                                 background: '#f8fafc',
                                 border: '1px solid var(--color-border)',
-                                borderRadius: 'var(--radius-sm)',
-                                fontSize: 'var(--font-xs)',
-                                fontWeight: 600,
-                                color: 'var(--color-text)',
+                                borderRadius: 'var(--radius-md)',
+                                fontSize: '15px',
                                 cursor: 'pointer',
+                                transition: 'all 0.15s ease',
                               }}
                             >
-                              View
+                              👁️
                             </button>
                             <button
                               id={`btn-receipt-${inv.invoiceNumber}`}
                               onClick={() => openInvoiceDetails(inv, 'THERMAL')}
+                              title="Print Receipt"
                               style={{
-                                padding: '5px 10px',
+                                width: '32px',
+                                height: '32px',
+                                padding: 0,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                                 background: '#eff6ff',
                                 border: '1px solid #bfdbfe',
-                                borderRadius: 'var(--radius-sm)',
-                                fontSize: 'var(--font-xs)',
-                                fontWeight: 600,
-                                color: 'var(--color-primary)',
+                                borderRadius: 'var(--radius-md)',
+                                fontSize: '15px',
                                 cursor: 'pointer',
+                                transition: 'all 0.15s ease',
                               }}
                             >
-                              🖨️ Receipt
+                              🖨️
                             </button>
                             {inv.status === 'FINALIZED' && (
                               <button
@@ -582,18 +588,23 @@ export default function BillingHistoryPage() {
                                   setInvoiceToRefund(inv);
                                   setIsApprovalModalOpen(true);
                                 }}
+                                title="Refund"
                                 style={{
-                                  padding: '5px 10px',
+                                  width: '32px',
+                                  height: '32px',
+                                  padding: 0,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
                                   background: '#fff1f2',
                                   border: '1px solid #fecdd3',
-                                  borderRadius: 'var(--radius-sm)',
-                                  fontSize: 'var(--font-xs)',
-                                  fontWeight: 600,
-                                  color: '#e11d48',
+                                  borderRadius: 'var(--radius-md)',
+                                  fontSize: '15px',
                                   cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
                                 }}
                               >
-                                ↩️ Refund
+                                ♻️
                               </button>
                             )}
                           </div>
@@ -670,7 +681,7 @@ export default function BillingHistoryPage() {
                     </span>
                   </div>
                   <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                    Issued on {new Date(selectedInvoice.createdAt).toLocaleString('en-IN')} • Store: {activeStore?.storeName || 'PulseClinic Pharmacy'}
+                    Issued on {new Date(selectedInvoice.createdAt).toLocaleString('en-IN')} • Store: {activeStore?.storeName || 'New Sanjivani Multispeciality Clinic'}
                   </div>
                 </div>
 
@@ -843,15 +854,15 @@ export default function BillingHistoryPage() {
                           <span style={{ color: 'var(--color-text-secondary)' }}>SGST:</span>
                           <span>₹{(selectedInvoice.sgstTotalPaise / 100).toFixed(2)}</span>
                         </div>
-                        {selectedInvoice.roundOffPaise !== 0 && (
+                        {selectedInvoice.totalDiscountPaise > 0 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: 'var(--color-text-secondary)' }}>Round-off:</span>
-                            <span>{selectedInvoice.roundOffPaise > 0 ? `+₹${(selectedInvoice.roundOffPaise / 100).toFixed(2)}` : `-₹${(Math.abs(selectedInvoice.roundOffPaise) / 100).toFixed(2)}`}</span>
+                            <span style={{ color: '#059669' }}>Discount:</span>
+                            <span style={{ color: '#059669' }}>-₹{(selectedInvoice.totalDiscountPaise / 100).toFixed(2)}</span>
                           </div>
                         )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid var(--color-border)', paddingTop: '6px', marginTop: '4px', fontWeight: 700, fontSize: 'var(--font-base)', color: 'var(--color-primary)' }}>
-                          <span>Net Payable:</span>
-                          <span>₹{(selectedInvoice.netPayablePaise / 100).toFixed(2)}</span>
+                          <span>Grand Total:</span>
+                          <span>₹{(selectedInvoice.grandTotalPaise / 100).toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
@@ -877,9 +888,10 @@ export default function BillingHistoryPage() {
                     >
                       {/* Thermal Receipt Header */}
                       <div style={{ textAlign: 'center', borderBottom: '1px dashed #94a3b8', paddingBottom: '8px', marginBottom: '8px' }}>
-                        <div style={{ fontSize: '14px', fontWeight: 700 }}>{activeStore?.storeName || 'PulseClinic Pharmacy'}</div>
-                        <div style={{ fontSize: '10px', color: '#64748b' }}>GSTIN: 29AABCU9603R1ZM • Reg: DL-2024-KA-8492</div>
-                        <div style={{ fontSize: '10px', color: '#64748b' }}>No. 42, 100ft Ring Road, Indiranagar, Bengaluru</div>
+                        <div style={{ fontSize: '14px', fontWeight: 700 }}>{activeStore?.storeName || 'New Sanjivani Multispeciality Clinic'}</div>
+                        <div style={{ fontSize: '10px', color: '#64748b' }}>Beside Hero Bike Agency, In Front of Rajesh Mani Inter College,</div>
+                        <div style={{ fontSize: '10px', color: '#64748b' }}>Padrauna Road, Naurangia, Kushinagar 274305</div>
+                        <div style={{ fontSize: '10px', color: '#64748b' }}>Ph: 8114000119 / 8004807785</div>
                       </div>
 
                       {/* Meta */}
@@ -906,7 +918,7 @@ export default function BillingHistoryPage() {
                                 {it.quantityUnits} x ₹{(it.unitPricePaise / 100).toFixed(2)}
                               </span>
                               <span style={{ fontWeight: 700, color: '#0f172a' }}>
-                                ₹{(it.lineTotalPaise / 100).toFixed(2)}
+                                ₹{(it.grossLinePaise / 100).toFixed(2)}
                               </span>
                             </div>
                           </div>
@@ -917,33 +929,25 @@ export default function BillingHistoryPage() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '6px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span>Subtotal:</span>
-                          <span>₹{(selectedInvoice.taxableTotalPaise / 100).toFixed(2)}</span>
+                          <span>₹{(selectedInvoice.grossTotalPaise / 100).toFixed(2)}</span>
                         </div>
+                        {selectedInvoice.totalDiscountPaise > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
+                            <span>Discount{selectedInvoice.items?.[0]?.discountBps > 0 ? ` (${(selectedInvoice.items[0].discountBps / 100).toFixed(selectedInvoice.items[0].discountBps % 100 === 0 ? 0 : 1)}%)` : ''}:</span>
+                            <span>-₹{(selectedInvoice.totalDiscountPaise / 100).toFixed(2)}</span>
+                          </div>
+                        )}
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span>Total GST:</span>
                           <span>₹{(selectedInvoice.taxTotalPaise / 100).toFixed(2)}</span>
                         </div>
-                        {selectedInvoice.roundOffPaise !== 0 && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span>Round-off:</span>
-                            <span>{selectedInvoice.roundOffPaise > 0 ? `+₹${(selectedInvoice.roundOffPaise / 100).toFixed(2)}` : `-₹${(Math.abs(selectedInvoice.roundOffPaise) / 100).toFixed(2)}`}</span>
-                          </div>
-                        )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #94a3b8', paddingTop: '4px', fontWeight: 700, fontSize: '13px' }}>
                           <span>GRAND TOTAL:</span>
-                          <span>₹{(selectedInvoice.netPayablePaise / 100).toFixed(2)}</span>
+                          <span>₹{(selectedInvoice.grandTotalPaise / 100).toFixed(2)}</span>
                         </div>
                       </div>
 
-                      {/* Payment modes */}
-                      <div style={{ borderTop: '1px dashed #94a3b8', marginTop: '6px', paddingTop: '6px' }}>
-                        {selectedInvoice.paymentModes?.map((pm, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span>Paid via {pm.mode}:</span>
-                            <span>₹{(pm.amountPaise / 100).toFixed(2)}</span>
-                          </div>
-                        ))}
-                      </div>
+
 
                       {/* Footer */}
                       <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '10px', color: '#64748b' }}>

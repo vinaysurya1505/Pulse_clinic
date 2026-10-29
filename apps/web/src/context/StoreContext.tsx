@@ -22,7 +22,7 @@ interface StoreContextValue {
 
 const DEFAULT_PRIMARY_STORE: ActiveStore = {
   storeId: 'pulseclinic-main',
-  storeName: 'PulseClinic Pharmacy',
+  storeName: 'New Sanjivani Multispeciality Clinic',
   role: 'OWNER',
   permissions: [
     'store.read',

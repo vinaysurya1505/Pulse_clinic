@@ -74,7 +74,7 @@ export default function GSTReportsPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>GSTR-1 Compliance & Tax Return Compiler | PulseClinic</title>
+        <title>GSTR-1 Compliance & Tax Return Compiler | New Sanjivani Clinic</title>
       </Head>
 
       <div style={{ padding: 'var(--space-lg)', maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>

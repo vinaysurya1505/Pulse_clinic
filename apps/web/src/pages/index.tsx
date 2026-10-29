@@ -33,7 +33,7 @@ export default function HomePage() {
   return (
     <>
       <Head>
-        <title>PulseClinic | AI-Powered Next-Gen Pharmacy Management System</title>
+        <title>New Sanjivani Multispeciality Clinic | Pharmacy Management System</title>
         <meta
           name="description"
           content="The intelligent operating system for modern pharmacies. Lightning-fast POS billing, automated inventory forecasting, Schedule H1 compliance, and single-store ease."
@@ -119,7 +119,7 @@ export default function HomePage() {
                     color: '#0f172a',
                   }}
                 >
-                  PulseClinic
+                  New Sanjivani
                 </span>
                 <span
                   style={{
@@ -424,7 +424,7 @@ export default function HomePage() {
               >
                 <Image
                   src="/images/hero-dashboard.jpg"
-                  alt="PulseClinic AI Pharmacy Intelligence Interface"
+                  alt="New Sanjivani Clinic Pharmacy Management Interface"
                   fill
                   priority
                   style={{ objectFit: 'cover' }}
@@ -636,10 +636,10 @@ export default function HomePage() {
                 color: '#0f172a',
               }}
             >
-              Explore the Power of PulseClinic
+              Explore the Power of New Sanjivani Clinic
             </h2>
             <p style={{ color: '#475569', fontSize: '16px', maxWidth: '640px', margin: '8px auto 0' }}>
-              Click between the modules below to see how PulseClinic handles critical retail & clinical pharmacy operations.
+              Click between the modules below to see how New Sanjivani Clinic handles critical retail & clinical pharmacy operations.
             </p>
           </div>
 
@@ -967,10 +967,10 @@ export default function HomePage() {
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#059669' }} />
                   </div>
                   <div style={{ fontSize: '20px', fontWeight: 800, marginTop: '6px', color: '#0f172a' }}>
-                    PulseClinic Pharmacy
+                    New Sanjivani Multispeciality Clinic
                   </div>
                   <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-                    Store ID: pulseclinic-main
+                    Padrauna Road, Naurangia, Kushinagar 274305
                   </div>
                   <div style={{ marginTop: '16px', display: 'flex', gap: '24px', flexWrap: 'wrap', fontSize: '13px', color: '#334155' }}>
                     <div>Assigned Access: <strong>Full Pharmacy Owner</strong></div>
@@ -1335,7 +1335,7 @@ export default function HomePage() {
                 Security and Regulatory Compliance Built-in
               </h2>
               <p style={{ color: '#475569', fontSize: '15px', lineHeight: 1.6, marginTop: '14px' }}>
-                Pharmacy data demands clinical precision and absolute privacy. PulseClinic enforces cryptographic isolation,
+                Pharmacy data demands clinical precision and absolute privacy. New Sanjivani Clinic enforces cryptographic isolation,
                 Firebase Cloud authentication, tamper-proof audit logging, and continuous automated backups.
               </p>
 
@@ -1482,7 +1482,7 @@ export default function HomePage() {
                   cursor: 'pointer',
                 }}
               >
-                Launch PulseClinic Now →
+                Launch Clinic Dashboard →
               </button>
             </div>
           </div>
@@ -1527,11 +1527,14 @@ export default function HomePage() {
                   P
                 </div>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
-                  PulseClinic
+                  New Sanjivani
                 </span>
               </div>
               <p style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6 }}>
-                AI-powered clinical pharmacy ERP and POS operating system.
+                Beside Hero Bike Agency, In Front of Rajesh Mani Inter College, Padrauna Road, Naurangia, Kushinagar 274305
+              </p>
+              <p style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6, marginTop: '4px' }}>
+                Ph: 8114000119 / 8004807785
               </p>
             </div>
 
@@ -1579,7 +1582,7 @@ export default function HomePage() {
               color: '#64748b',
             }}
           >
-            <div>© {new Date().getFullYear()} PulseClinic Systems Inc. All rights reserved.</div>
+            <div>© {new Date().getFullYear()} New Sanjivani Multispeciality Clinic. All rights reserved.</div>
 
             <div
               style={{

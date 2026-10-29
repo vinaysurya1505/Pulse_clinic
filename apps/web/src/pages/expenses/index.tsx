@@ -230,7 +230,7 @@ export default function ExpensesPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Expenses & Cash Drawer Reconciliation | PulseClinic</title>
+        <title>Expenses & Cash Drawer Reconciliation | New Sanjivani Clinic</title>
       </Head>
 
       <div style={{ padding: 'var(--space-lg)', maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>

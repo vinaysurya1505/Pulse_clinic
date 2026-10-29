@@ -249,10 +249,10 @@ export default function EmployeesPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Employee Roster & Roles | PulseClinic</title>
+        <title>Employee Roster & Roles | New Sanjivani Clinic</title>
         <meta
           name="description"
-          content="Manage pharmacy staff, RBAC roles, salary advances, and DPDP-compliant masked PII in PulseClinic."
+          content="Manage pharmacy staff, RBAC roles, salary advances, and DPDP-compliant masked PII."
         />
       </Head>
 

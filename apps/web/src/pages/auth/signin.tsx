@@ -43,7 +43,7 @@ export default function SignInPage() {
   return (
     <>
       <Head>
-        <title>Sign In | PulseClinic Pharmacy Management</title>
+        <title>Sign In | New Sanjivani Multispeciality Clinic</title>
       </Head>
 
       <div
@@ -106,7 +106,7 @@ export default function SignInPage() {
             </Link>
 
             <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
-              Sign In to PulseClinic
+              Sign In to New Sanjivani Clinic
             </h1>
             <p style={{ color: '#64748b', fontSize: '13px' }}>
               Authorized Pharmacy & Clinical Staff Console

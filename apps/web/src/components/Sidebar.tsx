@@ -79,7 +79,7 @@ export function Sidebar() {
         </div>
         {!collapsed && (
           <span style={{ fontWeight: 700, fontSize: '16px', color: 'var(--color-text)' }}>
-            PulseClinic
+            New Sanjivani
           </span>
         )}
       </div>
