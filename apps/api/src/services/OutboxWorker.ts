@@ -13,6 +13,7 @@ export interface OutboxEmailPayload {
   to: string;
   subject: string;
   body: string;
+  html?: string;
   metadata?: Record<string, any>;
 }
 
@@ -118,24 +119,11 @@ export class OutboxWorker {
           });
 
           await transporter.sendMail({
-            from: `"PulseClinic Pharmacy" <${process.env.SMTP_USER}>`,
+            from: `"New Sanjivani Clinic" <${process.env.SMTP_USER}>`,
             to: payload.to,
             subject: payload.subject,
             text: payload.body,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #ffffff;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-                  <h2 style="color: #2563eb; margin: 0; font-size: 20px;">PulseClinic Security & Approvals</h2>
-                </div>
-                <div style="font-size: 14px; line-height: 1.6; color: #1e293b; white-space: pre-wrap; background-color: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
-${payload.body}
-                </div>
-                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-                <p style="font-size: 11px; color: #64748b; margin: 0;">
-                  This is an automated administrative notification sent from PulseClinic Pharmacy Management System.
-                </p>
-              </div>
-            `,
+            html: payload.html || this.generateDefaultHtml(payload),
           });
           console.log(`[SMTP_SUCCESS] Live email delivered to ${payload.to} via Gmail SMTP.`);
         } else {
@@ -161,5 +149,35 @@ ${payload.body}
     }
 
     return { processed: snapshot.docs.length, sent, failed };
+  }
+
+  /**
+   * Fallback clean HTML renderer for generic outbox emails
+   */
+  static generateDefaultHtml(payload: OutboxEmailPayload): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${payload.subject}</title>
+</head>
+<body style="margin: 0; padding: 24px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <div style="max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); padding: 20px 24px; text-align: center;">
+      <h2 style="color: #ffffff; margin: 0; font-size: 18px; font-weight: 700;">New Sanjivani Multispeciality Clinic</h2>
+      <p style="margin: 4px 0 0 0; color: #93c5fd; font-size: 12px;">Security & Administration Notification</p>
+    </div>
+    <div style="padding: 24px;">
+      <div style="font-size: 14px; line-height: 1.6; color: #1e293b; white-space: pre-wrap; background-color: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+${payload.body}
+      </div>
+    </div>
+    <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 24px; text-align: center; font-size: 11px; color: #64748b;">
+      <div><strong>New Sanjivani Multispeciality Clinic</strong></div>
+      <div>Padrauna Road, Naurangia, Kushinagar 274305 • Ph: 8114000119 / 8004807785</div>
+    </div>
+  </div>
+</body>
+</html>`;
   }
 }
