@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
 import { useStore } from '@/context/StoreContext';
 import { Sidebar } from '@/components/Sidebar';
 import { TopBar } from '@/components/TopBar';
 import { InaugurationGreetingModal } from '@/components/InaugurationGreetingModal';
+import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, loading: authLoading } = useAuth();
   const { activeStore } = useStore();
   const [showGreeting, setShowGreeting] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -47,6 +49,50 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       sessionStorage.setItem('inauguration_greeting_dismissed', 'true');
     }
   };
+
+  const handleGlobalShortcuts = useCallback((e: KeyboardEvent) => {
+    const tag = (e.target as HTMLElement)?.tagName;
+    const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+    if (e.key === '?' && !isInput && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      setShowShortcuts(prev => !prev);
+      return;
+    }
+
+    if (e.key === 'Escape' && showShortcuts) {
+      setShowShortcuts(false);
+      return;
+    }
+
+    if (e.key === 'F2' && router.pathname !== '/billing/new') {
+      e.preventDefault();
+      router.push('/billing/new');
+      return;
+    }
+
+    if (!e.altKey) return;
+
+    const key = e.key.toLowerCase();
+    const altRoutes: Record<string, string> = {
+      b: '/billing/new',
+      m: '/inventory/medicines',
+      i: '/inventory/batches',
+      h: '/billing/history',
+      d: '/dashboard',
+      v: '/vault',
+    };
+
+    if (altRoutes[key]) {
+      e.preventDefault();
+      router.push(altRoutes[key]);
+    }
+  }, [router, showShortcuts]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+  }, [handleGlobalShortcuts]);
 
   if (authLoading) {
     return (
@@ -97,6 +143,37 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         isOpen={showGreeting}
         onClose={handleCloseGreeting}
       />
+
+      <KeyboardShortcutsModal
+        isOpen={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+        currentPath={router.pathname}
+      />
+
+      {/* Floating shortcut hint */}
+      <div
+        onClick={() => setShowShortcuts(true)}
+        style={{
+          position: 'fixed',
+          bottom: '16px',
+          right: '16px',
+          background: '#0f172a',
+          color: '#94a3b8',
+          padding: '6px 12px',
+          borderRadius: '8px',
+          fontSize: '12px',
+          fontWeight: 500,
+          cursor: 'pointer',
+          zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+        }}
+      >
+        <span style={{ background: '#334155', padding: '1px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, color: '#e2e8f0' }}>?</span>
+        <span>Shortcuts</span>
+      </div>
     </div>
   );
 }

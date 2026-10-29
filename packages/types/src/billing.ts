@@ -20,6 +20,8 @@ export interface BillingLineItemInput {
   unitPricePaise: number; // Price per base unit in integer paise
   gstRateBps: number; // e.g. 0, 500, 1200, 1800, 2800
   discountBps?: number; // e.g. 500 = 5.00%
+  costPricePaise?: number; // Cost price per strip in paise (for profit-based commission)
+  stripSize?: number; // Units per strip (for cost-per-unit calc)
 }
 
 export interface CalculatedLineItem {
@@ -44,6 +46,8 @@ export interface CalculatedLineItem {
   igstPaise: number;
   lineTaxPaise: number;
   lineTotalPaise: number;
+  costPricePaise?: number; // Total cost for this line (costPerUnit * qty)
+  profitPaise?: number; // grossLinePaise - costPricePaise
 }
 
 export interface GstTaxSlabBreakdown {
@@ -56,6 +60,7 @@ export interface GstTaxSlabBreakdown {
 }
 
 export type DiscountAllocationMethod = 'STORE' | 'DOCTOR' | 'BOTH';
+export type RoundOffMode = 'NONE' | 'NEAREST' | 'DOWN';
 
 export interface BillingCalculationInput {
   calculationVersion?: number;
@@ -66,7 +71,8 @@ export interface BillingCalculationInput {
   enableDoctorCommission?: boolean; // Configurable toggle per DEC-OPEN-02
   doctorCommissionBps?: number;
   discountAllocationMethod?: DiscountAllocationMethod;
-  roundOffToRupee?: boolean; // Default true
+  roundOffToRupee?: boolean; // Defaults to false (no automatic round off)
+  roundOffMode?: RoundOffMode; // 'NONE' (default exact paise), 'DOWN' (leave paise to integer rupee), 'NEAREST'
 }
 
 export interface BillingQuoteResult {
@@ -83,6 +89,8 @@ export interface BillingQuoteResult {
   roundOffPaise: number; // Difference applied to reach netPayablePaise
   netPayablePaise: number;
   taxSlabs: GstTaxSlabBreakdown[];
+  totalCostPaise: number;
+  totalProfitPaise: number;
   doctorCommissionBps?: number;
   originalDoctorCommissionPaise: number;
   discountAllocationMethod: DiscountAllocationMethod;
@@ -146,6 +154,8 @@ export function calculateBillingQuote(input: BillingCalculationInput): BillingQu
   let cgstTotalPaise = 0;
   let sgstTotalPaise = 0;
   let igstTotalPaise = 0;
+  let totalCostPaise = 0;
+  let totalProfitPaise = 0;
 
   for (const item of input.items) {
     const qty = Math.max(0, Math.floor(item.quantityUnits));
@@ -205,6 +215,18 @@ export function calculateBillingQuote(input: BillingCalculationInput): BillingQu
     slab.igstPaise += igstPaise;
     slab.totalTaxPaise += lineTaxPaise;
 
+    // Cost & profit per line
+    let lineCostPaise = 0;
+    let lineProfitPaise = 0;
+    if (item.costPricePaise !== undefined && item.costPricePaise > 0) {
+      const stripSz = item.stripSize || 1;
+      const costPerUnit = item.costPricePaise / stripSz;
+      lineCostPaise = Math.round(costPerUnit * qty);
+      lineProfitPaise = Math.max(0, grossLinePaise - lineCostPaise);
+    }
+    totalCostPaise += lineCostPaise;
+    totalProfitPaise += lineProfitPaise;
+
     calculatedItems.push({
       medicineId: item.medicineId,
       batchId: item.batchId,
@@ -227,26 +249,34 @@ export function calculateBillingQuote(input: BillingCalculationInput): BillingQu
       igstPaise,
       lineTaxPaise,
       lineTotalPaise,
+      costPricePaise: lineCostPaise || undefined,
+      profitPaise: lineProfitPaise || undefined,
     });
   }
 
   const taxTotalPaise = cgstTotalPaise + sgstTotalPaise + igstTotalPaise;
   const grandTotalPaise = taxableTotalPaise + taxTotalPaise;
 
-  // Round-off to nearest rupee (standard Indian retail billing practice)
+  // Round-off handling: default is NO automatic round-off (exact integer paise arithmetic).
+  // Store owner can explicitly choose to leave paise ('DOWN') or round to nearest rupee ('NEAREST').
   let netPayablePaise = grandTotalPaise;
   let roundOffPaise = 0;
-  if (input.roundOffToRupee !== false) {
+  if (input.roundOffMode === 'DOWN') {
+    // Truncate / round down to integer rupee, leaving/waiving remaining paise
+    netPayablePaise = Math.floor(grandTotalPaise / 100) * 100;
+    roundOffPaise = netPayablePaise - grandTotalPaise;
+  } else if (input.roundOffMode === 'NEAREST' || input.roundOffToRupee === true) {
+    // Round to nearest rupee only when explicitly requested
     netPayablePaise = Math.round(grandTotalPaise / 100) * 100;
     roundOffPaise = netPayablePaise - grandTotalPaise;
   }
 
   // Doctor commission (Section 3):
-  // Commission basis is the original bill amount BEFORE the cart discount (grossTotalPaise).
+  // Commission basis is PROFIT MARGIN (grossTotal - costTotal), not the bill amount.
   const hasCommission = Boolean(input.enableDoctorCommission && input.doctorCommissionBps && input.doctorCommissionBps > 0);
   const doctorCommissionBps = hasCommission ? Math.max(0, input.doctorCommissionBps || 0) : 0;
   const originalDoctorCommissionPaise = hasCommission
-    ? Math.round((grossTotalPaise * doctorCommissionBps) / 10000)
+    ? Math.round((totalProfitPaise * doctorCommissionBps) / 10000)
     : 0;
 
   // Discount Allocation (Section 4):
@@ -318,6 +348,8 @@ export function calculateBillingQuote(input: BillingCalculationInput): BillingQu
     roundOffPaise,
     netPayablePaise,
     taxSlabs,
+    totalCostPaise,
+    totalProfitPaise,
     doctorCommissionBps,
     originalDoctorCommissionPaise,
     discountAllocationMethod: allocationMethod,
@@ -385,8 +417,9 @@ export interface DoctorCommissionRecord {
   doctorId: string;
   doctorName?: string;
   commissionRateBps: number;
-  commissionBasis: 'GROSS_TOTAL_BEFORE_DISCOUNT';
+  commissionBasis: 'GROSS_TOTAL_BEFORE_DISCOUNT' | 'PROFIT_MARGIN';
   originalGrossTotalPaise: number;
+  totalProfitPaise: number;
   originalDoctorCommissionPaise: number;
   patientDiscountBps: number;
   totalPatientDiscountPaise: number;
@@ -400,5 +433,34 @@ export interface DoctorCommissionRecord {
   invoiceStatus: InvoiceStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+export type CommissionLedgerType = 'EARNED' | 'REFUND' | 'PAYMENT';
+
+export interface DoctorCommissionLedgerEntry {
+  id: string;
+  storeId: string;
+  doctorId: string;
+  doctorName?: string;
+  type: CommissionLedgerType;
+  amountPaise: number; // positive for EARNED, negative for REFUND/PAYMENT
+  invoiceId?: string;
+  invoiceNumber?: string;
+  billAmountPaise?: number;
+  profitPaise?: number;
+  customerName?: string;
+  note?: string;
+  recordedBy: string;
+  createdAt: string;
+}
+
+export interface DoctorCommissionSummary {
+  doctorId: string;
+  doctorName: string;
+  totalEarnedPaise: number;
+  totalRefundedPaise: number;
+  totalPaidPaise: number;
+  remainingPaise: number;
+  lastUpdatedAt: string;
 }
 

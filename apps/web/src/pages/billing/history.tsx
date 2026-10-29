@@ -864,6 +864,18 @@ export default function BillingHistoryPage() {
                           <span>Grand Total:</span>
                           <span>₹{(selectedInvoice.grandTotalPaise / 100).toFixed(2)}</span>
                         </div>
+                        {selectedInvoice.roundOffPaise !== undefined && selectedInvoice.roundOffPaise !== 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)' }}>
+                            <span>Round Off:</span>
+                            <span>{selectedInvoice.roundOffPaise > 0 ? '+' : ''}₹{(selectedInvoice.roundOffPaise / 100).toFixed(2)}</span>
+                          </div>
+                        )}
+                        {selectedInvoice.roundOffPaise !== undefined && selectedInvoice.roundOffPaise !== 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 'var(--font-base)', color: 'var(--color-primary)' }}>
+                            <span>Net Payable:</span>
+                            <span>₹{(selectedInvoice.netPayablePaise / 100).toFixed(2)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -945,6 +957,18 @@ export default function BillingHistoryPage() {
                           <span>GRAND TOTAL:</span>
                           <span>₹{(selectedInvoice.grandTotalPaise / 100).toFixed(2)}</span>
                         </div>
+                        {selectedInvoice.roundOffPaise !== undefined && selectedInvoice.roundOffPaise !== 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b' }}>
+                            <span>Round Off:</span>
+                            <span>{selectedInvoice.roundOffPaise > 0 ? '+' : ''}₹{(selectedInvoice.roundOffPaise / 100).toFixed(2)}</span>
+                          </div>
+                        )}
+                        {selectedInvoice.roundOffPaise !== undefined && selectedInvoice.roundOffPaise !== 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '13px' }}>
+                            <span>NET PAYABLE:</span>
+                            <span>₹{(selectedInvoice.netPayablePaise / 100).toFixed(2)}</span>
+                          </div>
+                        )}
                       </div>
 
 

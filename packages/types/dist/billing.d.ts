@@ -17,6 +17,8 @@ export interface BillingLineItemInput {
     unitPricePaise: number;
     gstRateBps: number;
     discountBps?: number;
+    costPricePaise?: number;
+    stripSize?: number;
 }
 export interface CalculatedLineItem {
     medicineId: string;
@@ -40,6 +42,8 @@ export interface CalculatedLineItem {
     igstPaise: number;
     lineTaxPaise: number;
     lineTotalPaise: number;
+    costPricePaise?: number;
+    profitPaise?: number;
 }
 export interface GstTaxSlabBreakdown {
     gstRateBps: number;
@@ -50,6 +54,7 @@ export interface GstTaxSlabBreakdown {
     totalTaxPaise: number;
 }
 export type DiscountAllocationMethod = 'STORE' | 'DOCTOR' | 'BOTH';
+export type RoundOffMode = 'NONE' | 'NEAREST' | 'DOWN';
 export interface BillingCalculationInput {
     calculationVersion?: number;
     items: BillingLineItemInput[];
@@ -60,6 +65,7 @@ export interface BillingCalculationInput {
     doctorCommissionBps?: number;
     discountAllocationMethod?: DiscountAllocationMethod;
     roundOffToRupee?: boolean;
+    roundOffMode?: RoundOffMode;
 }
 export interface BillingQuoteResult {
     calculationVersion: number;
@@ -75,6 +81,8 @@ export interface BillingQuoteResult {
     roundOffPaise: number;
     netPayablePaise: number;
     taxSlabs: GstTaxSlabBreakdown[];
+    totalCostPaise: number;
+    totalProfitPaise: number;
     doctorCommissionBps?: number;
     originalDoctorCommissionPaise: number;
     discountAllocationMethod: DiscountAllocationMethod;
@@ -142,8 +150,9 @@ export interface DoctorCommissionRecord {
     doctorId: string;
     doctorName?: string;
     commissionRateBps: number;
-    commissionBasis: 'GROSS_TOTAL_BEFORE_DISCOUNT';
+    commissionBasis: 'GROSS_TOTAL_BEFORE_DISCOUNT' | 'PROFIT_MARGIN';
     originalGrossTotalPaise: number;
+    totalProfitPaise: number;
     originalDoctorCommissionPaise: number;
     patientDiscountBps: number;
     totalPatientDiscountPaise: number;
@@ -157,5 +166,31 @@ export interface DoctorCommissionRecord {
     invoiceStatus: InvoiceStatus;
     createdAt: string;
     updatedAt: string;
+}
+export type CommissionLedgerType = 'EARNED' | 'REFUND' | 'PAYMENT';
+export interface DoctorCommissionLedgerEntry {
+    id: string;
+    storeId: string;
+    doctorId: string;
+    doctorName?: string;
+    type: CommissionLedgerType;
+    amountPaise: number;
+    invoiceId?: string;
+    invoiceNumber?: string;
+    billAmountPaise?: number;
+    profitPaise?: number;
+    customerName?: string;
+    note?: string;
+    recordedBy: string;
+    createdAt: string;
+}
+export interface DoctorCommissionSummary {
+    doctorId: string;
+    doctorName: string;
+    totalEarnedPaise: number;
+    totalRefundedPaise: number;
+    totalPaidPaise: number;
+    remainingPaise: number;
+    lastUpdatedAt: string;
 }
 //# sourceMappingURL=billing.d.ts.map

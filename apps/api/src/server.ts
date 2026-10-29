@@ -19,6 +19,7 @@ import { reportRouter } from './routes/reports';
 import { jobRouter } from './routes/jobs';
 import { notificationRouter } from './routes/notifications';
 import { auditLogRouter } from './routes/audit-logs';
+import { vaultRouter } from './routes/vault';
 import { rateLimiter } from './middleware/rate-limiter';
 import { sanitizeRequest, secureHeaders } from './middleware/security';
 import { errorHandler } from './middleware/error-handler';
@@ -57,6 +58,7 @@ app.use('/api/v1/reports', reportRouter);
 app.use('/api/v1/jobs', jobRouter);
 app.use('/api/v1/notifications', notificationRouter);
 app.use('/api/v1/audit-logs', auditLogRouter);
+app.use('/api/v1/vault', vaultRouter);
 
 app.use(errorHandler);
 

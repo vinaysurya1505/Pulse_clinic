@@ -620,6 +620,14 @@ export default function MedicinesPage() {
               <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}>
                 Quick-add medicines like a spreadsheet. {stats.total} formulations registered{stats.scheduled > 0 ? ` • ${stats.scheduled} scheduled drugs` : ''}.
               </p>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+                {[['Ctrl+A', 'Add Row'], ['Enter', 'Save'], ['Esc', 'Cancel']].map(([k, v]) => (
+                  <span key={k} style={{ fontSize: '10px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    <kbd style={{ padding: '1px 4px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '3px', fontSize: '10px', fontWeight: 600, color: '#475569', fontFamily: 'inherit' }}>{k}</kbd>
+                    {v}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 

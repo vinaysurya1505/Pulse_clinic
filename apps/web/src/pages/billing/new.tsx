@@ -16,6 +16,7 @@ import {
   calculateUnitPrice,
   sortBatchesFEFO,
   DiscountAllocationMethod,
+  RoundOffMode,
 } from '@pulseclinic/types';
 
 interface CartItem {
@@ -72,7 +73,7 @@ export default function NewBillingPage() {
   // Customer & Prescriber
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [customerStateCode, setCustomerStateCode] = useState('29'); // Default Karnataka
+  const [customerStateCode, setCustomerStateCode] = useState('');
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
   const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
   const [doctorsLoading, setDoctorsLoading] = useState(false);
@@ -90,14 +91,32 @@ export default function NewBillingPage() {
     }
   }, [hasDoctorCommission, discountAllocationMethod]);
 
+  // Round-off Preference (Store Owner Action)
+  const [roundOffMode, setRoundOffMode] = useState<RoundOffMode>('NONE');
+
   // Payment Modal
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<'CASH' | 'UPI' | 'CARD' | 'SPLIT'>('CASH');
   const [cashPaise, setCashPaise] = useState(0);
   const [upiPaise, setUpiPaise] = useState(0);
   const [cardPaise, setCardPaise] = useState(0);
-  const [cashTenderedRupees, setCashTenderedRupees] = useState('');
+  const [, setCashTenderedRupees] = useState('');
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // Sync payment allocations when quote/roundOffMode changes while payment modal is open
+  useEffect(() => {
+    if (isPaymentModalOpen && quote) {
+      if (paymentMode === 'CASH') {
+        setCashPaise(quote.netPayablePaise);
+        setCashTenderedRupees((quote.netPayablePaise / 100).toString());
+      } else if (paymentMode === 'UPI') {
+        setUpiPaise(quote.netPayablePaise);
+      } else if (paymentMode === 'CARD') {
+        setCardPaise(quote.netPayablePaise);
+      }
+    }
+  }, [quote?.netPayablePaise, isPaymentModalOpen, paymentMode]);
 
   // Finalized Bill / Receipt Modal
   const [finalizedInvoice, setFinalizedInvoice] = useState<any | null>(null);
@@ -181,6 +200,29 @@ export default function NewBillingPage() {
           openPaymentModal();
         }
       }
+      // Alt+N to focus customer name
+      if (e.altKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        (document.getElementById('billing-customer-name') as HTMLInputElement)?.focus();
+      }
+      // Alt+P to focus customer phone
+      if (e.altKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        (document.getElementById('billing-customer-phone') as HTMLInputElement)?.focus();
+      }
+      // F3 or Ctrl+S to focus medicine search
+      if (e.key === 'F3' || (e.ctrlKey && e.key.toLowerCase() === 's')) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        setIsSearchDropdownOpen(true);
+      }
+      // Alt+Q to focus last item quantity
+      if (e.altKey && e.key.toLowerCase() === 'q') {
+        e.preventDefault();
+        const qtyInputs = document.querySelectorAll<HTMLInputElement>('[data-qty-input]');
+        if (qtyInputs.length > 0) qtyInputs[qtyInputs.length - 1].focus();
+      }
       // Esc to close modals / search
       if (e.key === 'Escape') {
         setIsSearchDropdownOpen(false);
@@ -190,7 +232,7 @@ export default function NewBillingPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cartItems.length, quote]);
+  }, [cartItems.length, quote, isSearchDropdownOpen, displayedMedicines]);
 
   // Medicine Search Debounced
   useEffect(() => {
@@ -284,13 +326,22 @@ export default function NewBillingPage() {
             medicine,
             selectedBatch: fefoBatch,
             availableBatches: sorted,
-            quantityUnits: medicine.stripSize || 1,
+            quantityUnits: 0,
             discountBps: 0,
             customGstRateBps: initGstBps,
             gstInput: initGstBps > 0 ? (initGstBps / 100).toString() : '0',
           },
         ];
       });
+      // Auto-focus the quantity input of the newly added item
+      setTimeout(() => {
+        const qtyInputs = document.querySelectorAll<HTMLInputElement>('[data-qty-input]');
+        if (qtyInputs.length > 0) {
+          const lastInput = qtyInputs[qtyInputs.length - 1];
+          lastInput.focus();
+          lastInput.select();
+        }
+      }, 100);
     } catch (err) {
       alert('Failed to load batch stock for selected medicine');
     }
@@ -298,7 +349,7 @@ export default function NewBillingPage() {
 
   // Re-calculate live quote whenever cart, doctor, or discounts change
   useEffect(() => {
-    if (cartItems.length === 0 || !activeStore) {
+    if (cartItems.length === 0 || !activeStore || !cartItems.some((i) => i.quantityUnits > 0)) {
       setQuote(null);
       setQuoteError(null);
       return;
@@ -309,7 +360,7 @@ export default function NewBillingPage() {
       setQuoteError(null);
       try {
         const payload = {
-          items: cartItems.map((item) => ({
+          items: cartItems.filter((item) => item.quantityUnits > 0).map((item) => ({
             medicineId: item.medicine.id,
             batchId: item.selectedBatch.id,
             quantityUnits: item.quantityUnits,
@@ -321,6 +372,7 @@ export default function NewBillingPage() {
           doctorId: selectedDoctorId || undefined,
           discountAllocationMethod,
           roundOffToRupee: false,
+          roundOffMode,
         };
 
         const res = await apiPost<{ success: boolean; quote: BillingQuoteResult }>(
@@ -342,15 +394,14 @@ export default function NewBillingPage() {
 
     const timer = setTimeout(fetchQuote, 150);
     return () => clearTimeout(timer);
-  }, [cartItems, overallDiscountBps, customerStateCode, selectedDoctorId, discountAllocationMethod, activeStore?.storeId]);
+  }, [cartItems, overallDiscountBps, customerStateCode, selectedDoctorId, discountAllocationMethod, roundOffMode, activeStore?.storeId]);
 
   const updateCartItemQuantity = (index: number, newQty: number) => {
     setCartItems((prev) => {
       const updated = [...prev];
       const item = updated[index];
-      if (newQty <= 0) {
-        updated.splice(index, 1);
-        return updated;
+      if (newQty < 0) {
+        newQty = 0;
       }
       if (newQty > item.selectedBatch.stockUnits) {
         alert(`Cannot exceed available batch stock (${item.selectedBatch.stockUnits} units)`);
@@ -401,7 +452,8 @@ export default function NewBillingPage() {
   // Payment Modal Helpers
   const openPaymentModal = () => {
     if (!quote) return;
-    setCashPaise(quote.netPayablePaise); // Default 100% Cash
+    setPaymentMode('CASH');
+    setCashPaise(quote.netPayablePaise);
     setUpiPaise(0);
     setCardPaise(0);
     setCashTenderedRupees((quote.netPayablePaise / 100).toString());
@@ -409,10 +461,31 @@ export default function NewBillingPage() {
     setIsPaymentModalOpen(true);
   };
 
-  const cashChangePaise = useMemo(() => {
-    const tendered = Math.round(parseFloat(cashTenderedRupees || '0') * 100);
-    return Math.max(0, tendered - cashPaise);
-  }, [cashTenderedRupees, cashPaise]);
+  const switchPaymentMode = (mode: 'CASH' | 'UPI' | 'CARD' | 'SPLIT') => {
+    if (!quote) return;
+    setPaymentMode(mode);
+    setPaymentError(null);
+    if (mode === 'CASH') {
+      setCashPaise(quote.netPayablePaise);
+      setUpiPaise(0);
+      setCardPaise(0);
+      setCashTenderedRupees((quote.netPayablePaise / 100).toString());
+    } else if (mode === 'UPI') {
+      setCashPaise(0);
+      setUpiPaise(quote.netPayablePaise);
+      setCardPaise(0);
+    } else if (mode === 'CARD') {
+      setCashPaise(0);
+      setUpiPaise(0);
+      setCardPaise(quote.netPayablePaise);
+    } else {
+      setCashPaise(0);
+      setUpiPaise(0);
+      setCardPaise(0);
+      setCashTenderedRupees('');
+    }
+  };
+
 
   const handleFinalizeBill = async () => {
     if (!activeStore || !quote) return;
@@ -438,7 +511,7 @@ export default function NewBillingPage() {
 
     try {
       const payload = {
-        items: cartItems.map((it) => ({
+        items: cartItems.filter((it) => it.quantityUnits > 0).map((it) => ({
           medicineId: it.medicine.id,
           batchId: it.selectedBatch.id,
           quantityUnits: it.quantityUnits,
@@ -456,6 +529,8 @@ export default function NewBillingPage() {
         doctorId: selectedDoctorId || undefined,
         doctorName: selectedDoc?.name || undefined,
         idempotencyKey: `pos-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        roundOffToRupee: false,
+        roundOffMode,
       };
 
       const res = await apiPost<{ success: boolean; invoice: any }>('/bills', payload, activeStore.storeId);
@@ -473,6 +548,7 @@ export default function NewBillingPage() {
           igstTotalPaise: quote.igstTotalPaise,
           taxTotalPaise: quote.taxTotalPaise,
           grandTotalPaise: quote.grandTotalPaise,
+          roundOffPaise: quote.roundOffPaise,
           netPayablePaise: quote.netPayablePaise,
           paymentModes,
           customer: {
@@ -497,6 +573,7 @@ export default function NewBillingPage() {
         setOverallDiscountBps(0);
         setDiscountInput('0');
         setDiscountAllocationMethod('STORE');
+        setRoundOffMode('NONE');
         setCustomerName('');
         setCustomerPhone('');
         setSelectedDoctorId('');
@@ -538,6 +615,21 @@ export default function NewBillingPage() {
             <p style={{ margin: '2px 0 0 0', color: '#64748b', fontSize: '13px' }}>
               Sequential GST invoicing with FEFO stock deduction and Schedule H compliance.
             </p>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
+              {[
+                ['F3', 'Search'],
+                ['Alt+N', 'Name'],
+                ['Alt+P', 'Phone'],
+                ['Alt+Q', 'Qty'],
+                ['↑↓ Enter', 'Select Medicine'],
+                ['Ctrl+Enter', 'Finalize'],
+              ].map(([k, v]) => (
+                <span key={k} style={{ fontSize: '10px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                  <kbd style={{ padding: '1px 4px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '3px', fontSize: '10px', fontWeight: 600, color: '#475569', fontFamily: 'inherit' }}>{k}</kbd>
+                  {v}
+                </span>
+              ))}
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -620,15 +712,27 @@ export default function NewBillingPage() {
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   setIsSearchDropdownOpen(true);
+                  setSelectedResultIndex(0);
                 }}
                 id="pos-medicine-search-input"
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowDown') {
                     e.preventDefault();
-                    setSelectedResultIndex((prev) => Math.min(prev + 1, displayedMedicines.length - 1));
+                    setSelectedResultIndex((prev) => {
+                      const next = Math.min(prev + 1, displayedMedicines.length - 1);
+                      document.querySelector(`[data-medicine-idx="${next}"]`)?.scrollIntoView({ block: 'nearest' });
+                      return next;
+                    });
                   } else if (e.key === 'ArrowUp') {
                     e.preventDefault();
-                    setSelectedResultIndex((prev) => Math.max(prev - 1, 0));
+                    setSelectedResultIndex((prev) => {
+                      const next = Math.max(prev - 1, 0);
+                      document.querySelector(`[data-medicine-idx="${next}"]`)?.scrollIntoView({ block: 'nearest' });
+                      return next;
+                    });
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setIsSearchDropdownOpen(false);
                   } else if (e.key === 'Enter') {
                     e.preventDefault();
                     if (isSearchDropdownOpen && displayedMedicines[selectedResultIndex]) {
@@ -770,6 +874,7 @@ export default function NewBillingPage() {
                       return (
                         <div
                           key={med.id}
+                          data-medicine-idx={idx}
                           onClick={() => handleSelectMedicine(med, true)}
                           style={{
                             padding: '12px 16px',
@@ -777,10 +882,11 @@ export default function NewBillingPage() {
                             cursor: 'pointer',
                             backgroundColor:
                               idx === selectedResultIndex
-                                ? '#f8fafc'
+                                ? '#dbeafe'
                                 : inCartUnits > 0
                                 ? '#f0fdf4'
                                 : '#ffffff',
+                            borderLeft: idx === selectedResultIndex ? '3px solid #2563eb' : '3px solid transparent',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
@@ -961,13 +1067,26 @@ export default function NewBillingPage() {
                                   -
                                 </button>
                                 <input
-                                  type="number"
+                                  data-qty-input
+                                  type="text"
+                                  inputMode="numeric"
                                   min="1"
                                   max={item.selectedBatch.stockUnits}
-                                  value={item.quantityUnits}
-                                  onChange={(e) =>
-                                    updateCartItemQuantity(idx, parseInt(e.target.value, 10) || 1)
-                                  }
+                                  value={item.quantityUnits === 0 ? '' : item.quantityUnits}
+                                  placeholder="0"
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9]/g, '');
+                                    updateCartItemQuantity(idx, val === '' ? 0 : parseInt(val, 10));
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      searchInputRef.current?.focus();
+                                      searchInputRef.current?.select();
+                                      setIsSearchDropdownOpen(true);
+                                    }
+                                  }}
                                   style={{
                                     width: '48px',
                                     padding: '4px',
@@ -1069,6 +1188,7 @@ export default function NewBillingPage() {
                     Customer Name
                   </label>
                   <input
+                    id="billing-customer-name"
                     type="text"
                     placeholder="e.g. Anand Kumar"
                     value={customerName}
@@ -1088,6 +1208,7 @@ export default function NewBillingPage() {
                     Customer Phone
                   </label>
                   <input
+                    id="billing-customer-phone"
                     type="tel"
                     placeholder="e.g. 9876543210"
                     value={customerPhone}
@@ -1176,7 +1297,7 @@ export default function NewBillingPage() {
                     ) : (
                       doctors.map((d) => (
                         <option key={d.id} value={d.id}>
-                          {d.name.startsWith('Dr.') ? d.name : `Dr. ${d.name}`}{d.registrationNumber ? ` (${d.registrationNumber})` : ''}{d.specialization ? ` — ${d.specialization}` : ''}{d.commissionEnabled ? ` [${((d.commissionBps || 0) / 100).toFixed(0)}% Comm]` : ''}
+                          {d.name.startsWith('Dr.') ? d.name : `Dr. ${d.name}`}{d.registrationNumber ? ` (${d.registrationNumber})` : ''}{d.specialization ? ` — ${d.specialization}` : ''}
                         </option>
                       ))
                     )}
@@ -1344,6 +1465,67 @@ export default function NewBillingPage() {
                   </>
                 )}
 
+                {quote.roundOffPaise !== 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#059669' }}>
+                    <span>Round-Off (Waived)</span>
+                    <span style={{ fontWeight: 600 }}>{formatPaiseToINR(quote.roundOffPaise)}</span>
+                  </div>
+                )}
+
+                {/* Store Owner Quick Option to waive or keep exact paise */}
+                {quote.grandTotalPaise % 100 !== 0 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '6px 10px',
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                      marginBottom: '10px',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <span style={{ color: '#64748b', fontWeight: 500 }}>Paise:</span>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setRoundOffMode('NONE')}
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          border: roundOffMode === 'NONE' ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                          backgroundColor: roundOffMode === 'NONE' ? '#eff6ff' : '#ffffff',
+                          color: roundOffMode === 'NONE' ? '#1d4ed8' : '#64748b',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Exact
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRoundOffMode('DOWN')}
+                        title={`Waive ${quote.grandTotalPaise % 100} paise and charge ₹${Math.floor(quote.grandTotalPaise / 100)} only`}
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          border: roundOffMode === 'DOWN' ? '1px solid #059669' : '1px solid #cbd5e1',
+                          backgroundColor: roundOffMode === 'DOWN' ? '#f0fdf4' : '#ffffff',
+                          color: roundOffMode === 'DOWN' ? '#047857' : '#64748b',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Leave {quote.grandTotalPaise % 100}p (₹{Math.floor(quote.grandTotalPaise / 100)})
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div
                   style={{
                     borderTop: '2px solid #e2e8f0',
@@ -1360,85 +1542,7 @@ export default function NewBillingPage() {
                   </span>
                 </div>
 
-                {/* Doctor Commission Breakdown Area (Section 3 & 4) */}
-                {selectedDoc && (
-                  <div
-                    style={{
-                      backgroundColor: '#f0fdf4',
-                      border: '1px solid #bbf7d0',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      marginBottom: '16px',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        Doctor Commission
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          backgroundColor: hasDoctorCommission ? '#dcfce7' : '#f1f5f9',
-                          color: hasDoctorCommission ? '#15803d' : '#64748b',
-                        }}
-                      >
-                        {hasDoctorCommission ? `${((selectedDoc.commissionBps || 0) / 100).toFixed(1)}% Active` : 'Inactive'}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#334155', marginBottom: '3px' }}>
-                      <span>Prescribing Doctor:</span>
-                      <span style={{ fontWeight: 600 }}>{selectedDoc.name.startsWith('Dr.') ? selectedDoc.name : `Dr. ${selectedDoc.name}`}</span>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#334155', marginBottom: '3px' }}>
-                      <span>Commission Rate:</span>
-                      <span style={{ fontWeight: 600 }}>
-                        {hasDoctorCommission ? `${((selectedDoc.commissionBps || 0) / 100).toFixed(1)}%` : '0%'}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#334155', marginBottom: '3px' }}>
-                      <span>Original Commission:</span>
-                      <span style={{ fontWeight: 600, color: '#0f172a' }}>
-                        {formatPaiseToINR(quote.originalDoctorCommissionPaise || 0)}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#334155', marginBottom: '3px' }}>
-                      <span>Doctor-Borne Discount:</span>
-                      <span style={{ fontWeight: 600, color: (quote.actualDoctorDiscountPaise || 0) > 0 ? '#dc2626' : '#64748b' }}>
-                        - {formatPaiseToINR(quote.actualDoctorDiscountPaise || 0)}
-                      </span>
-                    </div>
-
-                    {quote.unallocatedDiscountPaise > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#b45309', marginBottom: '3px' }}>
-                        <span>Unallocated Excess Discount:</span>
-                        <span style={{ fontWeight: 600 }}>{formatPaiseToINR(quote.unallocatedDiscountPaise)}</span>
-                      </div>
-                    )}
-
-                    <div
-                      style={{
-                        borderTop: '1px solid #bbf7d0',
-                        paddingTop: '6px',
-                        marginTop: '6px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        color: '#166534',
-                      }}
-                    >
-                      <span>Final Commission Payable:</span>
-                      <span>{formatPaiseToINR(quote.finalDoctorCommissionPaise || 0)}</span>
-                    </div>
-                  </div>
-                )}
+                {/* Doctor commission is calculated in backend but NOT shown to workers — visible only in Owner Vault */}
 
                 {/* GST Slab Breakdown */}
                 {quote.taxSlabs.length > 0 && (
@@ -1502,8 +1606,17 @@ export default function NewBillingPage() {
         </div>
       </div>
 
-      {/* Split Payment Modal (Prompt 14) */}
-      {isPaymentModalOpen && quote && (
+      {/* Payment Modal */}
+      {isPaymentModalOpen && quote && (() => {
+        const totalAllocated = cashPaise + upiPaise + cardPaise;
+        const isBalanced = totalAllocated === quote.netPayablePaise;
+        const MODES = [
+          { key: 'CASH' as const, label: 'Cash', icon: '💵' },
+          { key: 'UPI' as const, label: 'UPI', icon: '📱' },
+          { key: 'CARD' as const, label: 'Card', icon: '💳' },
+          { key: 'SPLIT' as const, label: 'Split', icon: '🔀' },
+        ];
+        return (
         <div
           style={{
             position: 'fixed',
@@ -1528,14 +1641,26 @@ export default function NewBillingPage() {
               border: '1px solid #e2e8f0',
             }}
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setIsPaymentModalOpen(false);
+              }
+              if (e.key === 'Enter' && !e.ctrlKey && isBalanced && !paymentSubmitting) {
+                const tag = (e.target as HTMLElement)?.tagName;
+                if (tag !== 'INPUT') {
+                  e.preventDefault();
+                  handleFinalizeBill();
+                }
+              }
+            }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
                 <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
-                  Collect Payment & Finalize Invoice
+                  Collect Payment & Finalize
                 </h2>
                 <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>
-                  Split payment modes (Cash, UPI, Card) supported
+                  Select payment mode below
                 </p>
               </div>
               <button
@@ -1562,72 +1687,214 @@ export default function NewBillingPage() {
               </div>
             )}
 
-            {/* Total Due Callout */}
+            {/* Total Due */}
             <div
               style={{
-                backgroundColor: '#f8fafc',
-                border: '1px solid #e2e8f0',
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #bbf7d0',
                 borderRadius: '10px',
                 padding: '14px 18px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '20px',
+                marginBottom: '16px',
               }}
             >
               <div>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>TOTAL NET PAYABLE</div>
-                <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Payable</div>
+                <div style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a' }}>
                   {formatPaiseToINR(quote.netPayablePaise)}
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '12px', color: '#64748b' }}>Allocated</div>
-                <div
-                  style={{
-                    fontSize: '16px',
-                    fontWeight: 700,
-                    color: cashPaise + upiPaise + cardPaise === quote.netPayablePaise ? '#059669' : '#dc2626',
-                  }}
-                >
-                  {formatPaiseToINR(cashPaise + upiPaise + cardPaise)}
+              {paymentMode === 'SPLIT' && (
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '11px', color: '#64748b' }}>Allocated</div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: isBalanced ? '#059669' : '#dc2626' }}>
+                    {formatPaiseToINR(totalAllocated)}
+                  </div>
+                  {!isBalanced && (
+                    <div style={{ fontSize: '11px', color: '#dc2626', marginTop: '2px' }}>
+                      {totalAllocated < quote.netPayablePaise
+                        ? `₹${((quote.netPayablePaise - totalAllocated) / 100).toFixed(2)} remaining`
+                        : `₹${((totalAllocated - quote.netPayablePaise) / 100).toFixed(2)} over`}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* Payment Modes Inputs */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                  💵 Cash Amount (₹)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={(cashPaise / 100).toString()}
-                  onChange={(e) => setCashPaise(Math.max(0, Math.round(parseFloat(e.target.value || '0') * 100)))}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '14px',
-                  }}
-                />
+            {/* Store Owner Paise Action (Leave Paise / Exact) */}
+            {quote.grandTotalPaise % 100 !== 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 14px',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '10px',
+                  marginBottom: '16px',
+                  fontSize: '13px',
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600, color: '#334155' }}>Store Owner Round-Off:</div>
+                  <div style={{ fontSize: '11px', color: '#64748b' }}>
+                    {roundOffMode === 'DOWN'
+                      ? `Waived ${Math.abs(quote.roundOffPaise)} paise (taking integer ₹${Math.floor(quote.grandTotalPaise / 100)})`
+                      : 'No round-off (exact paise payable)'}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setRoundOffMode('NONE')}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      borderRadius: '6px',
+                      border: roundOffMode === 'NONE' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                      backgroundColor: roundOffMode === 'NONE' ? '#eff6ff' : '#ffffff',
+                      color: roundOffMode === 'NONE' ? '#1d4ed8' : '#64748b',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Exact ({formatPaiseToINR(quote.grandTotalPaise)})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoundOffMode('DOWN')}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      borderRadius: '6px',
+                      border: roundOffMode === 'DOWN' ? '2px solid #059669' : '1px solid #cbd5e1',
+                      backgroundColor: roundOffMode === 'DOWN' ? '#f0fdf4' : '#ffffff',
+                      color: roundOffMode === 'DOWN' ? '#047857' : '#64748b',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Leave {quote.grandTotalPaise % 100}p (₹{Math.floor(quote.grandTotalPaise / 100)})
+                  </button>
+                </div>
               </div>
+            )}
 
-              {cashPaise > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {/* Mode Selector Tabs */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '6px',
+                marginBottom: '20px',
+                background: '#f1f5f9',
+                borderRadius: '10px',
+                padding: '4px',
+              }}
+            >
+              {MODES.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => switchPaymentMode(m.key)}
+                  style={{
+                    padding: '10px 4px',
+                    borderRadius: '8px',
+                    border: paymentMode === m.key ? '2px solid #2563eb' : '2px solid transparent',
+                    background: paymentMode === m.key ? '#ffffff' : 'transparent',
+                    boxShadow: paymentMode === m.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '13px',
+                    fontWeight: paymentMode === m.key ? 700 : 500,
+                    color: paymentMode === m.key ? '#1e40af' : '#64748b',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span style={{ fontSize: '18px' }}>{m.icon}</span>
+                  <span>{m.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Mode-specific content */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px', minHeight: '80px' }}>
+              {/* CASH mode */}
+              {paymentMode === 'CASH' && (
+                <div style={{
+                  padding: '12px 16px',
+                  backgroundColor: '#f0fdf4',
+                  borderRadius: '8px',
+                  border: '1px solid #bbf7d0',
+                  fontSize: '14px',
+                  color: '#15803d',
+                  fontWeight: 600,
+                  textAlign: 'center',
+                }}>
+                  Full amount {formatPaiseToINR(quote.netPayablePaise)} will be collected as Cash
+                  {quote.roundOffPaise < 0 && (
+                    <div style={{ fontSize: '12px', color: '#166534', marginTop: '4px', fontWeight: 500 }}>
+                      ({Math.abs(quote.roundOffPaise)} paise waived by store owner)
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* UPI mode */}
+              {paymentMode === 'UPI' && (
+                <div style={{
+                  padding: '12px 16px',
+                  backgroundColor: '#eff6ff',
+                  borderRadius: '8px',
+                  border: '1px solid #bfdbfe',
+                  fontSize: '14px',
+                  color: '#1e40af',
+                  fontWeight: 600,
+                  textAlign: 'center',
+                }}>
+                  Full amount {formatPaiseToINR(quote.netPayablePaise)} will be collected via UPI
+                </div>
+              )}
+
+              {/* CARD mode */}
+              {paymentMode === 'CARD' && (
+                <div style={{
+                  padding: '12px 16px',
+                  backgroundColor: '#faf5ff',
+                  borderRadius: '8px',
+                  border: '1px solid #e9d5ff',
+                  fontSize: '14px',
+                  color: '#7e22ce',
+                  fontWeight: 600,
+                  textAlign: 'center',
+                }}>
+                  Full amount {formatPaiseToINR(quote.netPayablePaise)} will be collected via Card / POS
+                </div>
+              )}
+
+              {/* SPLIT mode */}
+              {paymentMode === 'SPLIT' && (
+                <>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                      Customer Tendered (₹)
+                      💵 Cash Amount (₹)
                     </label>
                     <input
+                      autoFocus
                       type="number"
-                      placeholder="e.g. 500"
-                      value={cashTenderedRupees}
-                      onChange={(e) => setCashTenderedRupees(e.target.value)}
+                      min="0"
+                      step="1"
+                      value={cashPaise === 0 ? '' : (cashPaise / 100).toString()}
+                      placeholder="0"
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setCashPaise(Math.max(0, Math.round(parseFloat(e.target.value || '0') * 100)))}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).closest('div')?.parentElement?.querySelector<HTMLInputElement>('div:nth-child(2) input')?.focus(); } }}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -1639,65 +1906,57 @@ export default function NewBillingPage() {
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                      Change to Return
+                      📱 UPI Amount (₹)
                     </label>
-                    <div
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={upiPaise === 0 ? '' : (upiPaise / 100).toString()}
+                      placeholder="0"
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setUpiPaise(Math.max(0, Math.round(parseFloat(e.target.value || '0') * 100)))}
                       style={{
+                        width: '100%',
                         padding: '8px 12px',
-                        backgroundColor: '#f1f5f9',
                         borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
                         fontSize: '14px',
-                        fontWeight: 700,
-                        color: '#059669',
                       }}
-                    >
-                      {formatPaiseToINR(cashChangePaise)}
-                    </div>
+                    />
                   </div>
-                </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                      💳 Card Amount (₹)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={cardPaise === 0 ? '' : (cardPaise / 100).toString()}
+                      placeholder="0"
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setCardPaise(Math.max(0, Math.round(parseFloat(e.target.value || '0') * 100)))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && isBalanced && !paymentSubmitting) {
+                          e.preventDefault();
+                          handleFinalizeBill();
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '14px',
+                      }}
+                    />
+                  </div>
+                </>
               )}
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                  📱 UPI / QR Code Amount (₹)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={(upiPaise / 100).toString()}
-                  onChange={(e) => setUpiPaise(Math.max(0, Math.round(parseFloat(e.target.value || '0') * 100)))}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '14px',
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                  💳 Card / POS Swipe Amount (₹)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={(cardPaise / 100).toString()}
-                  onChange={(e) => setCardPaise(Math.max(0, Math.round(parseFloat(e.target.value || '0') * 100)))}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '14px',
-                  }}
-                />
-              </div>
             </div>
 
+            {/* Action Buttons */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               <button
                 type="button"
@@ -1718,29 +1977,26 @@ export default function NewBillingPage() {
               <button
                 type="button"
                 onClick={handleFinalizeBill}
-                disabled={paymentSubmitting || cashPaise + upiPaise + cardPaise !== quote.netPayablePaise}
+                disabled={paymentSubmitting || !isBalanced}
                 id="pos-finalize-submit-btn"
                 style={{
                   padding: '10px 22px',
-                  backgroundColor:
-                    cashPaise + upiPaise + cardPaise === quote.netPayablePaise ? '#059669' : '#94a3b8',
+                  backgroundColor: isBalanced ? '#059669' : '#94a3b8',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '8px',
                   fontSize: '14px',
                   fontWeight: 700,
-                  cursor:
-                    paymentSubmitting || cashPaise + upiPaise + cardPaise !== quote.netPayablePaise
-                      ? 'not-allowed'
-                      : 'pointer',
+                  cursor: paymentSubmitting || !isBalanced ? 'not-allowed' : 'pointer',
                 }}
               >
-                {paymentSubmitting ? 'Finalizing Invoice...' : 'Finalize & Generate Invoice (F10)'}
+                {paymentSubmitting ? 'Finalizing...' : `Finalize Invoice (Enter)`}
               </button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Invoice Receipt Modal (Prompt 15: 80mm & A4 Preview) */}
       {isReceiptModalOpen && finalizedInvoice && (
@@ -1864,6 +2120,18 @@ export default function NewBillingPage() {
                 <span>GRAND TOTAL:</span>
                 <span>{formatPaiseToINR(finalizedInvoice.grandTotalPaise)}</span>
               </div>
+              {finalizedInvoice.roundOffPaise !== 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b' }}>
+                  <span>Round Off:</span>
+                  <span>{formatPaiseToINR(finalizedInvoice.roundOffPaise)}</span>
+                </div>
+              )}
+              {finalizedInvoice.roundOffPaise !== 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '14px', marginTop: '2px', color: '#0f172a' }}>
+                  <span>NET PAYABLE:</span>
+                  <span>{formatPaiseToINR(finalizedInvoice.netPayablePaise)}</span>
+                </div>
+              )}
 
               <div style={{ borderBottom: '1px dashed #94a3b8', margin: '8px 0' }} />
               <div style={{ textAlign: 'center', fontSize: '11px', color: '#64748b' }}>

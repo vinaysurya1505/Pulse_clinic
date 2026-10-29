@@ -27,6 +27,8 @@ export declare const COLLECTIONS: {
     readonly purchaseOrders: (storeId: string) => string;
     readonly doctors: (storeId: string) => string;
     readonly doctorCommissions: (storeId: string) => string;
+    readonly doctorCommissionLedger: (storeId: string, doctorId: string) => string;
+    readonly doctorCommissionSummaries: (storeId: string) => string;
     readonly employees: (storeId: string) => string;
     readonly employeeLedger: (storeId: string) => string;
     readonly expenses: (storeId: string) => string;

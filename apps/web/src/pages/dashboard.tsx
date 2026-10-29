@@ -126,6 +126,14 @@ export default function DashboardPage() {
             <p style={{ margin: '4px 0 0 0', color: 'var(--color-text-secondary)', fontSize: 'var(--font-sm)' }}>
               Real-time sales revenue, inventory health, and daily register summary for {activeStore.storeName}.
             </p>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+              {[['F2', 'New Bill'], ['Alt+M', 'Medicines'], ['Alt+H', 'History'], ['?', 'All Shortcuts']].map(([k, v]) => (
+                <span key={k} style={{ fontSize: '10px', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                  <kbd style={{ padding: '1px 4px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '3px', fontSize: '10px', fontWeight: 600, color: '#475569', fontFamily: 'inherit' }}>{k}</kbd>
+                  {v}
+                </span>
+              ))}
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>

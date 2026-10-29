@@ -11,6 +11,7 @@ import {
   InvoiceRecord,
   DiscountAllocationMethod,
   DoctorCommissionRecord,
+  RoundOffMode,
 } from '@pulseclinic/types';
 import { AuditExplorerService } from './AuditExplorerService';
 
@@ -34,6 +35,8 @@ export interface FinalizeBillInput {
   doctorName?: string;
   prescriptionNumber?: string;
   idempotencyKey?: string;
+  roundOffToRupee?: boolean;
+  roundOffMode?: RoundOffMode;
 }
 
 export class BillFinalizationService {
@@ -61,6 +64,8 @@ export class BillFinalizationService {
       customerStateCode: input.customer?.stateCode,
       doctorId: input.doctorId,
       discountAllocationMethod: input.discountAllocationMethod,
+      roundOffToRupee: input.roundOffToRupee === true,
+      roundOffMode: input.roundOffMode || (input.roundOffToRupee ? 'NEAREST' : 'NONE'),
     };
     const quote: BillingQuoteResult = await BillingCalculationEngine.calculateQuote(storeId, quoteReq);
 
@@ -94,6 +99,14 @@ export class BillFinalizationService {
       const medDocs = await Promise.all(
         quote.items.map((it) => t.get(medicinesCol.doc(it.medicineId)))
       );
+
+      // Read doctor commission summary if needed
+      let commissionSummaryRef: FirebaseFirestore.DocumentReference | null = null;
+      let commissionSummarySnap: FirebaseFirestore.DocumentSnapshot | null = null;
+      if (input.doctorId && (quote.originalDoctorCommissionPaise > 0 || quote.finalDoctorCommissionPaise > 0)) {
+        commissionSummaryRef = db.collection(COLLECTIONS.doctorCommissionSummaries(storeId)).doc(input.doctorId);
+        commissionSummarySnap = await t.get(commissionSummaryRef);
+      }
 
       // PHASE 2: CALCULATIONS & IN-MEMORY VALIDATION
       const nowObj = new Date();
@@ -235,8 +248,9 @@ export class BillFinalizationService {
           doctorId: input.doctorId,
           ...(input.doctorName ? { doctorName: input.doctorName } : {}),
           commissionRateBps: quote.doctorCommissionBps || 0,
-          commissionBasis: 'GROSS_TOTAL_BEFORE_DISCOUNT',
+          commissionBasis: 'PROFIT_MARGIN',
           originalGrossTotalPaise: quote.grossTotalPaise,
+          totalProfitPaise: quote.totalProfitPaise,
           originalDoctorCommissionPaise: quote.originalDoctorCommissionPaise,
           patientDiscountBps: input.overallDiscountBps || 0,
           totalPatientDiscountPaise: quote.totalDiscountPaise,
@@ -252,6 +266,47 @@ export class BillFinalizationService {
           updatedAt: now,
         };
         t.set(commissionRef, commissionRecord);
+
+        // 5b. Write commission ledger entry
+        const ledgerRef = db.collection(COLLECTIONS.doctorCommissionLedger(storeId, input.doctorId)).doc();
+        t.set(ledgerRef, {
+          id: ledgerRef.id,
+          storeId,
+          doctorId: input.doctorId,
+          doctorName: input.doctorName || '',
+          type: 'EARNED',
+          amountPaise: quote.finalDoctorCommissionPaise,
+          invoiceId: invoiceRef.id,
+          invoiceNumber,
+          billAmountPaise: quote.netPayablePaise,
+          profitPaise: quote.totalProfitPaise,
+          customerName: input.customer?.name || '',
+          recordedBy: billerUid,
+          createdAt: now,
+        });
+
+        // 5c. Update doctor commission summary (upsert)
+        if (commissionSummaryRef && commissionSummarySnap) {
+          if (commissionSummarySnap.exists) {
+            const existing = commissionSummarySnap.data()!;
+            t.update(commissionSummaryRef, {
+              totalEarnedPaise: (existing.totalEarnedPaise || 0) + quote.finalDoctorCommissionPaise,
+              remainingPaise: (existing.remainingPaise || 0) + quote.finalDoctorCommissionPaise,
+              doctorName: input.doctorName || existing.doctorName || '',
+              lastUpdatedAt: now,
+            });
+          } else {
+            t.set(commissionSummaryRef, {
+              doctorId: input.doctorId,
+              doctorName: input.doctorName || '',
+              totalEarnedPaise: quote.finalDoctorCommissionPaise,
+              totalRefundedPaise: 0,
+              totalPaidPaise: 0,
+              remainingPaise: quote.finalDoctorCommissionPaise,
+              lastUpdatedAt: now,
+            });
+          }
+        }
       }
 
       return record;

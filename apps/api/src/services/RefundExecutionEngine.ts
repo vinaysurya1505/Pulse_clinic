@@ -42,6 +42,15 @@ export class RefundExecutionEngine {
       const doctorCommissionRef = db.collection(COLLECTIONS.doctorCommissions(storeId)).doc(invoiceId);
       const doctorCommissionDoc = await t.get(doctorCommissionRef);
 
+      // Read commission summary for the doctor if applicable
+      let commSummaryRef: FirebaseFirestore.DocumentReference | null = null;
+      let commSummarySnap: FirebaseFirestore.DocumentSnapshot | null = null;
+      if (doctorCommissionDoc.exists) {
+        const commData = doctorCommissionDoc.data()!;
+        commSummaryRef = db.collection(COLLECTIONS.doctorCommissionSummaries(storeId)).doc(commData.doctorId);
+        commSummarySnap = await t.get(commSummaryRef);
+      }
+
       if (invoice.status !== 'FINALIZED' && invoice.status !== 'PARTIALLY_REFUNDED') {
         throw new Error(`Cannot refund invoice with status "${invoice.status}".`);
       }
@@ -179,11 +188,44 @@ export class RefundExecutionEngine {
 
       // 5. Update doctor commission record if exists
       if (doctorCommissionDoc.exists) {
+        const commData = doctorCommissionDoc.data()!;
+        const reversedAmount = commData.finalDoctorCommissionPaise || 0;
+
         t.update(doctorCommissionRef, {
           invoiceStatus: newInvoiceStatus,
           finalDoctorCommissionPaise: 0,
           updatedAt: now,
         });
+
+        // 5b. Write REFUND ledger entry
+        if (reversedAmount > 0) {
+          const ledgerRef = db.collection(COLLECTIONS.doctorCommissionLedger(storeId, commData.doctorId)).doc();
+          t.set(ledgerRef, {
+            id: ledgerRef.id,
+            storeId,
+            doctorId: commData.doctorId,
+            doctorName: commData.doctorName || '',
+            type: 'REFUND',
+            amountPaise: -reversedAmount,
+            invoiceId,
+            invoiceNumber: invoice.invoiceNumber,
+            billAmountPaise: invoice.netPayablePaise,
+            profitPaise: commData.totalProfitPaise || 0,
+            customerName: invoice.customer?.name || '',
+            recordedBy: operatorUid,
+            createdAt: now,
+          });
+
+          // 5c. Update commission summary
+          if (commSummaryRef && commSummarySnap && commSummarySnap.exists) {
+            const existing = commSummarySnap.data()!;
+            t.update(commSummaryRef, {
+              totalRefundedPaise: (existing.totalRefundedPaise || 0) + reversedAmount,
+              remainingPaise: (existing.remainingPaise || 0) - reversedAmount,
+              lastUpdatedAt: now,
+            });
+          }
+        }
       }
 
       return { refundRecord, invoiceStatus: newInvoiceStatus };

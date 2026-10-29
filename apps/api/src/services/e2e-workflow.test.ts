@@ -36,8 +36,44 @@ describe('Prompt 27: Complete End-to-End Automated Testing Suite', () => {
     assert.strictEqual(quote.igstTotalPaise, 0);
     assert.strictEqual(quote.taxTotalPaise, 456); // 456 paise
     assert.strictEqual(quote.grandTotalPaise, 4256); // ₹42.56 exact total
-    assert.strictEqual(quote.roundOffPaise, 44); // +₹0.44 round-off
-    assert.strictEqual(quote.netPayablePaise, 4300); // ₹43.00 rounded payable
+    assert.strictEqual(quote.roundOffPaise, 0); // No automatic round-off (Prompt 11/user preference)
+    assert.strictEqual(quote.netPayablePaise, 4256); // ₹42.56 exact payable
+
+    // Optional store owner round-off: leave paise (round down to integer rupee)
+    const quoteDown = calculateBillingQuote({
+      items: [
+        {
+          medicineId: 'med_pcm',
+          batchId: 'batch_pcm_01',
+          quantityUnits: 2,
+          unitPricePaise: 2000,
+          discountBps: 500,
+          gstRateBps: 1200,
+          hsnCode: '30049099',
+        },
+      ],
+      roundOffMode: 'DOWN',
+    });
+    assert.strictEqual(quoteDown.netPayablePaise, 4200); // ₹42.00
+    assert.strictEqual(quoteDown.roundOffPaise, -56); // -₹0.56 (leave 56 paise)
+
+    // Optional store owner round-off: nearest rupee
+    const quoteNearest = calculateBillingQuote({
+      items: [
+        {
+          medicineId: 'med_pcm',
+          batchId: 'batch_pcm_01',
+          quantityUnits: 2,
+          unitPricePaise: 2000,
+          discountBps: 500,
+          gstRateBps: 1200,
+          hsnCode: '30049099',
+        },
+      ],
+      roundOffMode: 'NEAREST',
+    });
+    assert.strictEqual(quoteNearest.netPayablePaise, 4300); // ₹43.00
+    assert.strictEqual(quoteNearest.roundOffPaise, 44); // +₹0.44 round-off
   });
 
   // Test 2: Split Payment Exact Match Assertion

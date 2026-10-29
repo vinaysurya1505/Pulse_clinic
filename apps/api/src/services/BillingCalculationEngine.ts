@@ -10,6 +10,7 @@ import {
   validateLooseSale,
   DiscountAllocationMethod,
   DoctorProfile,
+  RoundOffMode,
 } from '@pulseclinic/types';
 
 export interface AuthoritativeQuoteRequest {
@@ -27,6 +28,7 @@ export interface AuthoritativeQuoteRequest {
   enableDoctorCommission?: boolean;
   doctorCommissionBps?: number;
   roundOffToRupee?: boolean;
+  roundOffMode?: RoundOffMode;
 }
 
 export class BillingCalculationEngine {
@@ -144,6 +146,8 @@ export class BillingCalculationEngine {
         unitPricePaise,
         gstRateBps,
         discountBps: reqItem.discountBps,
+        costPricePaise: batch.costPricePaise || 0,
+        stripSize: medicine.stripSize || 1,
       });
     }
 
@@ -156,7 +160,8 @@ export class BillingCalculationEngine {
       enableDoctorCommission,
       doctorCommissionBps,
       discountAllocationMethod: allocationMethod,
-      roundOffToRupee: request.roundOffToRupee !== false,
+      roundOffToRupee: request.roundOffToRupee === true,
+      roundOffMode: request.roundOffMode || (request.roundOffToRupee ? 'NEAREST' : 'NONE'),
     });
   }
 }

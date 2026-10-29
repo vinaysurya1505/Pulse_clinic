@@ -50,6 +50,8 @@ function calculateBillingQuote(input) {
     let cgstTotalPaise = 0;
     let sgstTotalPaise = 0;
     let igstTotalPaise = 0;
+    let totalCostPaise = 0;
+    let totalProfitPaise = 0;
     for (const item of input.items) {
         const qty = Math.max(0, Math.floor(item.quantityUnits));
         const unitPrice = Math.max(0, Math.floor(item.unitPricePaise));
@@ -102,6 +104,17 @@ function calculateBillingQuote(input) {
         slab.sgstPaise += sgstPaise;
         slab.igstPaise += igstPaise;
         slab.totalTaxPaise += lineTaxPaise;
+        // Cost & profit per line
+        let lineCostPaise = 0;
+        let lineProfitPaise = 0;
+        if (item.costPricePaise !== undefined && item.costPricePaise > 0) {
+            const stripSz = item.stripSize || 1;
+            const costPerUnit = item.costPricePaise / stripSz;
+            lineCostPaise = Math.round(costPerUnit * qty);
+            lineProfitPaise = Math.max(0, grossLinePaise - lineCostPaise);
+        }
+        totalCostPaise += lineCostPaise;
+        totalProfitPaise += lineProfitPaise;
         calculatedItems.push({
             medicineId: item.medicineId,
             batchId: item.batchId,
@@ -124,23 +137,32 @@ function calculateBillingQuote(input) {
             igstPaise,
             lineTaxPaise,
             lineTotalPaise,
+            costPricePaise: lineCostPaise || undefined,
+            profitPaise: lineProfitPaise || undefined,
         });
     }
     const taxTotalPaise = cgstTotalPaise + sgstTotalPaise + igstTotalPaise;
     const grandTotalPaise = taxableTotalPaise + taxTotalPaise;
-    // Round-off to nearest rupee (standard Indian retail billing practice)
+    // Round-off handling: default is NO automatic round-off (exact integer paise arithmetic).
+    // Store owner can explicitly choose to leave paise ('DOWN') or round to nearest rupee ('NEAREST').
     let netPayablePaise = grandTotalPaise;
     let roundOffPaise = 0;
-    if (input.roundOffToRupee !== false) {
+    if (input.roundOffMode === 'DOWN') {
+        // Truncate / round down to integer rupee, leaving/waiving remaining paise
+        netPayablePaise = Math.floor(grandTotalPaise / 100) * 100;
+        roundOffPaise = netPayablePaise - grandTotalPaise;
+    }
+    else if (input.roundOffMode === 'NEAREST' || input.roundOffToRupee === true) {
+        // Round to nearest rupee only when explicitly requested
         netPayablePaise = Math.round(grandTotalPaise / 100) * 100;
         roundOffPaise = netPayablePaise - grandTotalPaise;
     }
     // Doctor commission (Section 3):
-    // Commission basis is the original bill amount BEFORE the cart discount (grossTotalPaise).
+    // Commission basis is PROFIT MARGIN (grossTotal - costTotal), not the bill amount.
     const hasCommission = Boolean(input.enableDoctorCommission && input.doctorCommissionBps && input.doctorCommissionBps > 0);
     const doctorCommissionBps = hasCommission ? Math.max(0, input.doctorCommissionBps || 0) : 0;
     const originalDoctorCommissionPaise = hasCommission
-        ? Math.round((grossTotalPaise * doctorCommissionBps) / 10000)
+        ? Math.round((totalProfitPaise * doctorCommissionBps) / 10000)
         : 0;
     // Discount Allocation (Section 4):
     // Options: 'STORE' | 'DOCTOR' | 'BOTH'
@@ -212,6 +234,8 @@ function calculateBillingQuote(input) {
         roundOffPaise,
         netPayablePaise,
         taxSlabs,
+        totalCostPaise,
+        totalProfitPaise,
         doctorCommissionBps,
         originalDoctorCommissionPaise,
         discountAllocationMethod: allocationMethod,

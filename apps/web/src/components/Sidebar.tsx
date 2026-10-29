@@ -26,6 +26,7 @@ const navItems: NavItem[] = [
   { label: 'Reports', href: '/reports/financial', icon: '📈' },
   { label: 'GST Reports', href: '/reports/gst', icon: '🧮' },
   { label: 'Audit Logs', href: '/admin/audit-logs', icon: '🔍', permission: 'audit.read' },
+  { label: 'Owner Vault', href: '/vault', icon: '🔒' },
 ];
 
 export function Sidebar() {

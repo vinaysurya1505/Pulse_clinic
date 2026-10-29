@@ -31,6 +31,7 @@ const quoteSchema = z.object({
   enableDoctorCommission: z.boolean().optional(),
   doctorCommissionBps: z.number().int().min(0).max(10000).optional(),
   roundOffToRupee: z.boolean().optional(),
+  roundOffMode: z.enum(['NONE', 'NEAREST', 'DOWN']).optional(),
 });
 
 const finalizeBillSchema = z.object({
@@ -61,6 +62,8 @@ const finalizeBillSchema = z.object({
   doctorName: z.string().optional(),
   prescriptionNumber: z.string().optional(),
   idempotencyKey: z.string().optional(),
+  roundOffToRupee: z.boolean().optional(),
+  roundOffMode: z.enum(['NONE', 'NEAREST', 'DOWN']).optional(),
 });
 
 // 1. Calculate Billing Quote (POS Dry Run)
