@@ -8,7 +8,6 @@ import {
   BaseUnits,
   ScheduleCategories,
   BaseUnit,
-  ScheduleCategory,
   CSVPreviewResult,
   ImportJob,
   ImportRowError,
@@ -22,10 +21,106 @@ export interface ParsedCSVRow {
   data: Record<string, string>;
 }
 
+const HEADER_ALIASES: Record<string, string[]> = {
+  brandname: ['brand name', 'medicine name', 'name', 'brand', 'medicine', 'brandname'],
+  dosageform: ['form', 'dosage form', 'dosageform', 'type', 'medicine form'],
+  racklocation: ['rack', 'rack location', 'racklocation', 'shelf', 'location'],
+  stripsize: ['units/strip', 'units per strip', 'pack size', 'strip size', 'stripsize', 'packsize', 'unitperstrip'],
+  mrp: ['mrp', 'mrp/strip', 'mrp per strip', 'price', 'mrprupees', 'mrp rupees'],
+  batchnumber: ['batch #', 'batch no', 'batch number', 'batchnumber', 'batch', 'batchno'],
+  expirydate: ['expiry', 'expiry date', 'expirydate', 'exp', 'exp date'],
+  initialstockunits: ['qty', 'quantity', 'stock', 'initial stock', 'initialstock', 'initialstockunits', 'stock qty'],
+  genericname: ['generic name', 'genericname', 'generic', 'molecule', 'salt', 'salt name'],
+  category: ['category', 'therapeutic category'],
+  strength: ['strength', 'dose', 'dosage'],
+  manufacturer: ['manufacturer', 'mfr', 'company'],
+  costprice: ['cost price', 'costprice', 'cost', 'purchase price'],
+};
+
+function resolveHeader(rawHeader: string): string {
+  const clean = rawHeader.toLowerCase().replace(/[^a-z0-9/ #]/g, '').trim();
+  for (const [canonical, aliases] of Object.entries(HEADER_ALIASES)) {
+    for (const alias of aliases) {
+      if (clean === alias.replace(/[^a-z0-9/ #]/g, '').trim()) return canonical;
+    }
+  }
+  return clean.replace(/[^a-z0-9]/g, '');
+}
+
+const MONTH_MAP: Record<string, string> = {
+  jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+  jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+  january: '01', february: '02', march: '03', april: '04', june: '06',
+  july: '07', august: '08', september: '09', october: '10', november: '11', december: '12',
+};
+
+function normalizeExpiry(raw: string): string {
+  if (!raw) return '';
+  const trimmed = raw.trim();
+
+  // Standard ISO YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  // DD/MM/YYYY or DD-MM-YYYY
+  const ddMMYYYY = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (ddMMYYYY) return `${ddMMYYYY[3]}-${ddMMYYYY[2].padStart(2, '0')}-${ddMMYYYY[1].padStart(2, '0')}`;
+
+  // MM/YYYY or MM-YYYY
+  const mmYYYY = trimmed.match(/^(\d{1,2})[\/\-](\d{4})$/);
+  if (mmYYYY) return `${mmYYYY[2]}-${mmYYYY[1].padStart(2, '0')}-28`;
+
+  // MM/YY or MM-YY (e.g. 08/27 or 8/27)
+  const mmYY = trimmed.match(/^(\d{1,2})[\/\-](\d{2})$/);
+  if (mmYY) {
+    const month = mmYY[1].padStart(2, '0');
+    const year = `20${mmYY[2]}`;
+    return `${year}-${month}-28`;
+  }
+
+  // Text month formats: Aug-27, Aug-2027, Aug/27, Aug 2027
+  const textMonthMatch = trimmed.match(/^([a-zA-Z]{3,9})[\/\-\s]+(\d{2,4})$/);
+  if (textMonthMatch) {
+    const monthStr = textMonthMatch[1].toLowerCase();
+    const month = MONTH_MAP[monthStr];
+    let year = textMonthMatch[2];
+    if (year.length === 2) year = `20${year}`;
+    if (month) return `${year}-${month}-28`;
+  }
+
+  // Reverse text month: 27-Aug, 2027-Aug
+  const revTextMonthMatch = trimmed.match(/^(\d{2,4})[\/\-\s]+([a-zA-Z]{3,9})$/);
+  if (revTextMonthMatch) {
+    const monthStr = revTextMonthMatch[2].toLowerCase();
+    const month = MONTH_MAP[monthStr];
+    let year = revTextMonthMatch[1];
+    if (year.length === 2) year = `20${year}`;
+    if (month) return `${year}-${month}-28`;
+  }
+
+  // Fallback: try parsing with native Date
+  const parsedDate = new Date(trimmed);
+  if (!isNaN(parsedDate.getTime())) {
+    const y = parsedDate.getFullYear();
+    const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
+    const d = String(parsedDate.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  return trimmed;
+}
+
+function deriveBaseUnit(dosageForm: string): string {
+  const f = dosageForm.toLowerCase();
+  if (f.includes('tablet') || f.includes('tab')) return BaseUnits.TABLET;
+  if (f.includes('capsule') || f.includes('cap')) return BaseUnits.CAPSULE;
+  if (f.includes('syrup') || f.includes('liquid') || f.includes('solution') || f.includes('suspension') || f.includes('drop')) return BaseUnits.BOTTLE;
+  if (f.includes('cream') || f.includes('ointment') || f.includes('gel')) return BaseUnits.TUBE;
+  if (f.includes('injection') || f.includes('vial') || f.includes('ampoule')) return BaseUnits.VIAL;
+  if (f.includes('sachet') || f.includes('powder') || f.includes('granule')) return BaseUnits.SACHET;
+  return BaseUnits.PIECE;
+}
+
 export class CSVImportEngine {
-  /**
-   * Fast, reliable RFC 4180 CSV parser handling quoted fields, commas, and line endings.
-   */
   static parseCSV(csvText: string): { headers: string[]; rows: ParsedCSVRow[] } {
     const lines = csvText.split(/\r?\n/).filter((line) => line.trim().length > 0);
     if (lines.length === 0) return { headers: [], rows: [] };
@@ -34,16 +129,11 @@ export class CSVImportEngine {
       const result: string[] = [];
       let current = '';
       let inQuotes = false;
-
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
         if (char === '"') {
-          if (inQuotes && line[i + 1] === '"') {
-            current += '"';
-            i++;
-          } else {
-            inQuotes = !inQuotes;
-          }
+          if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+          else inQuotes = !inQuotes;
         } else if (char === ',' && !inQuotes) {
           result.push(current.trim());
           current = '';
@@ -55,99 +145,89 @@ export class CSVImportEngine {
       return result;
     };
 
-    const headers = splitLine(lines[0]).map((h) => h.replace(/^["']|["']$/g, '').trim());
+    const rawHeaders = splitLine(lines[0]).map((h) => h.replace(/^["']|["']$/g, '').trim());
+    const resolvedHeaders = rawHeaders.map(resolveHeader);
     const rows: ParsedCSVRow[] = [];
 
     for (let i = 1; i < lines.length; i++) {
       const values = splitLine(lines[i]);
       const rowData: Record<string, string> = {};
-      headers.forEach((h, idx) => {
+      resolvedHeaders.forEach((h, idx) => {
         const val = values[idx] || '';
         rowData[h] = val.replace(/^["']|["']$/g, '').trim();
       });
       rows.push({ rowNumber: i + 1, data: rowData });
     }
 
-    return { headers, rows };
+    return { headers: rawHeaders, rows };
   }
 
-  /**
-   * Generates SHA-256 checksum of CSV content for idempotency (ADR-013)
-   */
   static computeHash(content: string): string {
     return crypto.createHash('sha256').update(content.trim()).digest('hex');
   }
 
-  /**
-   * Validates row headers and normalizes key names (case-insensitive)
-   */
-  static normalizeRow(raw: Record<string, string>): Record<string, string> {
-    const norm: Record<string, string> = {};
-    for (const [key, val] of Object.entries(raw)) {
-      const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
-      norm[cleanKey] = val;
-    }
-    return norm;
-  }
-
-  /**
-   * Previews CSV, validates row schemas, and detects errors before writing to DB
-   */
-  static preview(csvText: string): CSVPreviewResult {
+  static async preview(csvText: string, storeId?: string): Promise<CSVPreviewResult> {
     const { headers, rows } = this.parseCSV(csvText);
     const fileHash = this.computeHash(csvText);
 
     const validationErrors: ImportRowError[] = [];
     const validRows: Array<Record<string, unknown>> = [];
 
+    // Build existing medicine index for upsert detection
+    let existingIndex: Map<string, string> = new Map();
+    if (storeId) {
+      try {
+        const db = getFirestore();
+        const medsSnap = await db.collection(COLLECTIONS.medicines(storeId))
+          .where('isArchived', '==', false).get();
+        medsSnap.docs.forEach((doc) => {
+          const data = doc.data();
+          if (data.brandName) {
+            existingIndex.set(data.brandName.toLowerCase().trim(), doc.id);
+          }
+        });
+      } catch { /* ignore */ }
+    }
+
+    let createdCount = 0;
+    let updatedCount = 0;
+
     rows.forEach((r) => {
-      const norm = this.normalizeRow(r.data);
-      const brand = norm['brandname'] || norm['brand'] || norm['name'] || '';
-      const generic = norm['genericname'] || norm['generic'] || norm['molecule'] || '';
-
+      const d = r.data;
+      const brand = d['brandname'] || '';
       if (!brand) {
-        validationErrors.push({
-          rowNumber: r.rowNumber,
-          rawRow: r.data,
-          field: 'brandName',
-          message: 'Brand Name is mandatory.',
-        });
-        return;
-      }
-      if (!generic) {
-        validationErrors.push({
-          rowNumber: r.rowNumber,
-          rawRow: r.data,
-          field: 'genericName',
-          message: 'Generic Name is mandatory.',
-        });
+        validationErrors.push({ rowNumber: r.rowNumber, rawRow: r.data, field: 'Medicine Name', message: 'Medicine Name is required.' });
         return;
       }
 
-      // Check batch validation if batch fields are present
-      const batchNo = norm['batchnumber'] || norm['batch'] || norm['batchno'] || '';
-      const expDate = norm['expirydate'] || norm['expiry'] || norm['exp'] || '';
+      const batchNo = d['batchnumber'] || '';
+      const expDate = d['expirydate'] || '';
+      const mrpRaw = d['mrp'] || '';
+
       if (batchNo && !expDate) {
-        validationErrors.push({
-          rowNumber: r.rowNumber,
-          rawRow: r.data,
-          field: 'expiryDate',
-          message: 'Expiry date (YYYY-MM-DD) is required when batch number is specified.',
-        });
+        validationErrors.push({ rowNumber: r.rowNumber, rawRow: r.data, field: 'Expiry', message: 'Expiry date is required when Batch # is specified.' });
         return;
       }
+      if (batchNo && !mrpRaw) {
+        validationErrors.push({ rowNumber: r.rowNumber, rawRow: r.data, field: 'MRP', message: 'MRP is required when Batch # is specified.' });
+        return;
+      }
+
+      const isUpdate = existingIndex.has(brand.toLowerCase().trim());
+      if (isUpdate) updatedCount++;
+      else createdCount++;
 
       validRows.push({
         rowNumber: r.rowNumber,
+        action: isUpdate ? 'UPDATE' : 'CREATE',
         brandName: brand,
-        genericName: generic,
-        category: norm['category'] || 'Other',
-        dosageForm: norm['dosageform'] || 'Tablet',
-        strength: norm['strength'] || 'Standard',
-        stripSize: parseInt(norm['stripsize'] || norm['packsize'] || '10', 10) || 10,
+        dosageForm: d['dosageform'] || 'Tablet',
+        rackLocation: d['racklocation'] || '',
+        stripSize: parseInt(d['stripsize'] || '10', 10) || 10,
+        mrp: mrpRaw || undefined,
         batchNumber: batchNo || undefined,
-        expiryDate: expDate || undefined,
-        mrp: norm['mrp'] || undefined,
+        expiryDate: expDate ? normalizeExpiry(expDate) : undefined,
+        qty: d['initialstockunits'] || '1',
       });
     });
 
@@ -156,15 +236,14 @@ export class CSVImportEngine {
       validRowsCount: validRows.length,
       errorRowsCount: validationErrors.length,
       headers,
-      samplePreview: validRows.slice(0, 10),
+      samplePreview: validRows.slice(0, 20),
       validationErrors,
       fileHash,
+      createdCount,
+      updatedCount,
     };
   }
 
-  /**
-   * Commits the CSV import with dynamic write-budget chunking (ADR-013)
-   */
   static async commit(
     storeId: string,
     csvText: string,
@@ -174,7 +253,6 @@ export class CSVImportEngine {
     const db = getFirestore();
     const fileHash = this.computeHash(csvText);
 
-    // 1. Idempotency Check: prevent duplicate double-imports
     const existingJob = await db
       .collection(COLLECTIONS.importJobs(storeId))
       .where('fileHash', '==', fileHash)
@@ -203,6 +281,8 @@ export class CSVImportEngine {
       processedRows: 0,
       successCount: 0,
       errorCount: 0,
+      createdCount: 0,
+      updatedCount: 0,
       errors: [],
       createdAt: now,
       updatedAt: now,
@@ -210,9 +290,35 @@ export class CSVImportEngine {
 
     await jobDocRef.set(jobRecord);
 
-    const CHUNK_SIZE = 25; // Max 25 rows per batch chunk (ADR-013)
+    // Build existing medicine index for upsert
+    const existingMeds: Map<string, { id: string; data: MedicineMaster }> = new Map();
+    const medsSnap = await db.collection(COLLECTIONS.medicines(storeId))
+      .where('isArchived', '==', false).get();
+    medsSnap.docs.forEach((doc) => {
+      const data = doc.data() as MedicineMaster;
+      if (data.brandName) {
+        existingMeds.set(data.brandName.toLowerCase().trim(), { id: doc.id, data });
+      }
+    });
+
+    // Build existing batch index per medicine
+    const existingBatches: Map<string, Map<string, { id: string; stockUnits: number }>> = new Map();
+    const batchesSnap = await db.collection(COLLECTIONS.batches(storeId)).get();
+    batchesSnap.docs.forEach((doc) => {
+      const b = doc.data();
+      if (!b.medicineId) return;
+      if (!existingBatches.has(b.medicineId)) existingBatches.set(b.medicineId, new Map());
+      existingBatches.get(b.medicineId)!.set(
+        (b.batchNumber || '').toUpperCase().trim(),
+        { id: doc.id, stockUnits: b.stockUnits || 0 }
+      );
+    });
+
+    const CHUNK_SIZE = 25;
     let processedRows = 0;
     let successCount = 0;
+    let createdCount = 0;
+    let updatedCount = 0;
     const errors: ImportRowError[] = [];
 
     for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
@@ -221,106 +327,168 @@ export class CSVImportEngine {
 
       for (const row of chunk) {
         try {
-          const norm = this.normalizeRow(row.data);
-          const brandName = norm['brandname'] || norm['brand'] || norm['name'];
-          const genericName = norm['genericname'] || norm['generic'] || norm['molecule'];
+          const d = row.data;
+          const brandName = (d['brandname'] || '').trim();
+          if (!brandName) throw new Error('Medicine Name is required');
 
-          if (!brandName || !genericName) {
-            throw new Error('Brand name and Generic molecule name are required');
-          }
+          const dosageForm = d['dosageform'] || 'Tablet';
+          const rackLocation = d['racklocation'] || '';
+          const stripSize = Math.max(1, parseInt(d['stripsize'] || '10', 10) || 10);
+          const baseUnit = deriveBaseUnit(dosageForm) as BaseUnit;
+          const genericName = d['genericname'] || brandName;
+          const category = d['category'] || 'Other';
+          const strength = d['strength'] || '';
 
-          // Parse unit & packaging
-          const rawBaseUnit = (norm['baseunit'] || 'TABLET').toUpperCase();
-          const baseUnit = (BaseUnits as Record<string, BaseUnit>)[rawBaseUnit] || BaseUnits.TABLET;
-          const stripSize = Math.max(1, parseInt(norm['stripsize'] || norm['packsize'] || '10', 10) || 10);
-          const looseRaw = (norm['allowloosesales'] || norm['loosesales'] || 'true').toLowerCase();
-          const allowLooseSales = looseRaw === 'true' || looseRaw === '1' || looseRaw === 'yes';
+          const existing = existingMeds.get(brandName.toLowerCase().trim());
+          let medicineId: string;
 
-          // Regulatory schedule & GST
-          const schedRaw = (norm['schedulecategory'] || norm['schedule'] || 'NONE').toUpperCase();
-          const scheduleCategory = (ScheduleCategories as Record<string, ScheduleCategory>)[schedRaw] || ScheduleCategories.NONE;
-          const gstPercentRaw = norm['gstratepercent'] || norm['gstpercent'] || norm['gst'] || '12';
-          const gstRateBps = Math.round(parseFloat(gstPercentRaw.replace('%', '')) * 100) || 1200;
-
-          // 1. Create Medicine Doc
-          const medDocRef = db.collection(COLLECTIONS.medicines(storeId)).doc();
-          const medicineData: MedicineMaster = {
-            id: medDocRef.id,
-            storeId,
-            brandName: brandName.trim(),
-            genericName: genericName.trim(),
-            category: norm['category'] || 'Other',
-            dosageForm: norm['dosageform'] || 'Tablet',
-            strength: norm['strength'] || '',
-            manufacturer: norm['manufacturer'] || undefined,
-            hsnCode: norm['hsncode'] || '3004',
-            gstRateBps,
-            baseUnit,
-            stripSize,
-            allowLooseSales,
-            scheduleCategory,
-            rackLocation: norm['racklocation'] || norm['rack'] || undefined,
-            barcode: norm['barcode'] || undefined,
-            reorderLevelUnits: parseInt(norm['reorderlevelunits'] || '50', 10) || 50,
-            isArchived: false,
-            createdAt: now,
-            updatedAt: now,
-          };
-          batch.set(medDocRef, medicineData);
-
-          // 2. Optional Batch & Stock Ledger
-          const batchNumber = norm['batchnumber'] || norm['batch'] || norm['batchno'];
-          const expiryDate = norm['expirydate'] || norm['expiry'] || norm['exp'];
-
-          if (batchNumber && expiryDate) {
-            const rawMrp = norm['mrp'] || '100.00';
-            const rawCost = norm['costprice'] || norm['cost'] || '70.00';
-            const mrpPaise = parseDecimalToPaise(rawMrp);
-            const costPricePaise = parseDecimalToPaise(rawCost);
-            const initialStockUnits = parseInt(norm['initialstockunits'] || norm['stock'] || '50', 10) || 0;
-
-            const isExpired = getBatchExpiryStatus(expiryDate) === 'EXPIRED';
-
-            const batchDocRef = db.collection(COLLECTIONS.batches(storeId)).doc();
-            const batchData: BatchInventory = {
-              id: batchDocRef.id,
+          if (existing) {
+            // UPDATE existing medicine fields
+            medicineId = existing.id;
+            const updateFields: Record<string, unknown> = { updatedAt: now };
+            if (dosageForm && dosageForm !== 'Tablet') updateFields.dosageForm = dosageForm;
+            if (rackLocation) updateFields.rackLocation = rackLocation;
+            if (stripSize !== 10) updateFields.stripSize = stripSize;
+            batch.update(db.collection(COLLECTIONS.medicines(storeId)).doc(medicineId), updateFields);
+            updatedCount++;
+          } else {
+            // CREATE new medicine
+            const medDocRef = db.collection(COLLECTIONS.medicines(storeId)).doc();
+            medicineId = medDocRef.id;
+            const medicineData: Record<string, unknown> = {
+              id: medicineId,
               storeId,
-              medicineId: medDocRef.id,
-              medicineBrandName: medicineData.brandName,
-              medicineGenericName: medicineData.genericName,
-              dosageForm: medicineData.dosageForm,
-              strength: medicineData.strength,
-              batchNumber: batchNumber.trim().toUpperCase(),
-              expiryDate: expiryDate.trim(),
-              mrpPaise,
-              costPricePaise,
-              stockUnits: initialStockUnits,
-              status: isExpired ? BatchStatuses.EXPIRED : BatchStatuses.ACTIVE,
-              rackLocation: medicineData.rackLocation,
+              brandName,
+              genericName,
+              category,
+              dosageForm,
+              strength,
+              hsnCode: '3004',
+              gstRateBps: 0,
+              baseUnit,
+              stripSize,
+              allowLooseSales: true,
+              scheduleCategory: ScheduleCategories.NONE,
+              reorderLevelUnits: 50,
+              isArchived: false,
               createdAt: now,
               updatedAt: now,
             };
-            batch.set(batchDocRef, batchData);
+            if (d['manufacturer'] && d['manufacturer'].trim()) {
+              medicineData.manufacturer = d['manufacturer'].trim();
+            }
+            if (rackLocation) {
+              medicineData.rackLocation = rackLocation;
+            }
+            if (d['barcode'] && d['barcode'].trim()) {
+              medicineData.barcode = d['barcode'].trim();
+            }
 
-            if (initialStockUnits > 0) {
-              const ledgerDocRef = db.collection(COLLECTIONS.stockLedger(storeId)).doc();
-              const ledgerEntry: StockLedgerEntry = {
-                id: ledgerDocRef.id,
-                storeId,
-                batchId: batchDocRef.id,
-                medicineId: medDocRef.id,
-                medicineBrandName: medicineData.brandName,
-                batchNumber: batchData.batchNumber,
-                movementType: 'INITIAL_STOCK',
-                changeUnits: initialStockUnits,
-                balanceUnitsBefore: 0,
-                balanceUnitsAfter: initialStockUnits,
-                reason: `CSV Bulk Ingestion (Job ${jobDocRef.id})`,
-                performedBy: userId,
-                performedByName: userName || 'Pharmacist',
-                createdAt: now,
+            batch.set(medDocRef, medicineData as unknown as MedicineMaster);
+            existingMeds.set(brandName.toLowerCase().trim(), { id: medicineId, data: medicineData as unknown as MedicineMaster });
+            createdCount++;
+          }
+
+          // Handle batch if batch fields provided
+          const batchNumber = (d['batchnumber'] || '').trim().toUpperCase();
+          const expiryRaw = d['expirydate'] || '';
+          const mrpRaw = d['mrp'] || '';
+
+          if (batchNumber && expiryRaw) {
+            const expiryDate = normalizeExpiry(expiryRaw);
+            const mrpPaise = mrpRaw ? parseDecimalToPaise(mrpRaw) : 10000;
+            const costRaw = d['costprice'] || '';
+            const costPricePaise = costRaw ? parseDecimalToPaise(costRaw) : mrpPaise;
+            const initialStockUnits = parseInt(d['initialstockunits'] || '1', 10) || 1;
+            const isExpired = getBatchExpiryStatus(expiryDate) === 'EXPIRED';
+
+            const medBatches = existingBatches.get(medicineId);
+            const existingBatch = medBatches?.get(batchNumber);
+
+            if (existingBatch) {
+              // UPDATE existing batch — add stock
+              const newStock = existingBatch.stockUnits + initialStockUnits;
+              const batchUpdateData: Record<string, unknown> = {
+                stockUnits: newStock,
+                mrpPaise,
+                costPricePaise,
+                expiryDate,
+                updatedAt: now,
               };
-              batch.set(ledgerDocRef, ledgerEntry);
+              if (rackLocation) {
+                batchUpdateData.rackLocation = rackLocation;
+              }
+              batch.update(db.collection(COLLECTIONS.batches(storeId)).doc(existingBatch.id), batchUpdateData);
+
+              if (initialStockUnits > 0) {
+                const ledgerRef = db.collection(COLLECTIONS.stockLedger(storeId)).doc();
+                const ledgerEntry: StockLedgerEntry = {
+                  id: ledgerRef.id,
+                  storeId,
+                  batchId: existingBatch.id,
+                  medicineId,
+                  medicineBrandName: brandName,
+                  batchNumber,
+                  movementType: 'INITIAL_STOCK',
+                  changeUnits: initialStockUnits,
+                  balanceUnitsBefore: existingBatch.stockUnits,
+                  balanceUnitsAfter: newStock,
+                  reason: `CSV Bulk Update (Job ${jobDocRef.id})`,
+                  performedBy: userId,
+                  performedByName: userName || 'Pharmacist',
+                  createdAt: now,
+                };
+                batch.set(ledgerRef, ledgerEntry);
+              }
+              existingBatch.stockUnits += initialStockUnits;
+            } else {
+              // CREATE new batch
+              const batchDocRef = db.collection(COLLECTIONS.batches(storeId)).doc();
+              const batchData: Record<string, unknown> = {
+                id: batchDocRef.id,
+                storeId,
+                medicineId,
+                medicineBrandName: brandName,
+                medicineGenericName: genericName,
+                dosageForm,
+                strength,
+                batchNumber,
+                expiryDate,
+                mrpPaise,
+                costPricePaise,
+                stockUnits: initialStockUnits,
+                status: isExpired ? BatchStatuses.EXPIRED : BatchStatuses.ACTIVE,
+                createdAt: now,
+                updatedAt: now,
+              };
+              if (rackLocation) {
+                batchData.rackLocation = rackLocation;
+              }
+              batch.set(batchDocRef, batchData as unknown as BatchInventory);
+
+              if (initialStockUnits > 0) {
+                const ledgerRef = db.collection(COLLECTIONS.stockLedger(storeId)).doc();
+                const ledgerEntry: StockLedgerEntry = {
+                  id: ledgerRef.id,
+                  storeId,
+                  batchId: batchDocRef.id,
+                  medicineId,
+                  medicineBrandName: brandName,
+                  batchNumber,
+                  movementType: 'INITIAL_STOCK',
+                  changeUnits: initialStockUnits,
+                  balanceUnitsBefore: 0,
+                  balanceUnitsAfter: initialStockUnits,
+                  reason: `CSV Bulk Import (Job ${jobDocRef.id})`,
+                  performedBy: userId,
+                  performedByName: userName || 'Pharmacist',
+                  createdAt: now,
+                };
+                batch.set(ledgerRef, ledgerEntry);
+              }
+
+              if (!existingBatches.has(medicineId)) existingBatches.set(medicineId, new Map());
+              existingBatches.get(medicineId)!.set(batchNumber, { id: batchDocRef.id, stockUnits: initialStockUnits });
             }
           }
 
@@ -337,10 +505,11 @@ export class CSVImportEngine {
       await batch.commit();
       processedRows += chunk.length;
 
-      // Update intermediate progress on job record
       await jobDocRef.update({
         processedRows,
         successCount,
+        createdCount,
+        updatedCount,
         errorCount: errors.length,
         errors: errors.slice(0, 50),
         updatedAt: new Date().toISOString(),
@@ -353,6 +522,8 @@ export class CSVImportEngine {
       status: finalStatus,
       processedRows,
       successCount,
+      createdCount,
+      updatedCount,
       errorCount: errors.length,
       errors,
       updatedAt: new Date().toISOString(),
@@ -362,6 +533,8 @@ export class CSVImportEngine {
       status: finalStatus,
       processedRows,
       successCount,
+      createdCount,
+      updatedCount,
       errorCount: errors.length,
       errors: errors.slice(0, 100),
       updatedAt: finalJob.updatedAt,

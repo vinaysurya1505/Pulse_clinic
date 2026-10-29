@@ -32,7 +32,8 @@ importRouter.post('/csv/preview', requirePermission('import.execute'), async (re
   }
 
   try {
-    const preview = CSVImportEngine.preview(parsed.data.csvContent);
+    const storeId = req.tenantContext!.storeId;
+    const preview = await CSVImportEngine.preview(parsed.data.csvContent, storeId);
     res.json({ success: true, preview });
   } catch (err: unknown) {
     console.error('Error previewing CSV:', err);

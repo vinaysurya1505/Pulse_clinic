@@ -40,12 +40,25 @@ export interface DashboardMetricsResponse {
 }
 
 export class DailyClosingService {
+  static getTodayIST(): string {
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const ist = new Date(now.getTime() + istOffset);
+    return ist.toISOString().split('T')[0];
+  }
+
+  static toISTDate(isoString: string): string {
+    const d = new Date(isoString);
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const ist = new Date(d.getTime() + istOffset);
+    return ist.toISOString().split('T')[0];
+  }
   /**
    * Computes or fetches live executive store dashboard metrics
    */
   static async getDashboardMetrics(storeId: string): Promise<DashboardMetricsResponse> {
     const db = getFirestore();
-    const today = new Date().toISOString().split('T')[0];
+    const today = DailyClosingService.getTodayIST();
 
     // Check if day is already closed in dailySummaries
     const summaryRef = db.collection(COLLECTIONS.dailySummaries(storeId)).doc(today);
@@ -64,7 +77,8 @@ export class DailyClosingService {
       const inv = { id: doc.id, ...(doc.data() as Omit<InvoiceRecord, 'id'>) };
       allInvoices.push(inv);
 
-      if (inv.createdAt.startsWith(today)) {
+      const invDateIST = DailyClosingService.toISTDate(inv.createdAt);
+      if (invDateIST === today) {
         if (inv.status === 'FINALIZED') {
           todaySalesPaise += inv.netPayablePaise || 0;
           todayTaxPaise += inv.taxTotalPaise || 0;
@@ -82,7 +96,7 @@ export class DailyClosingService {
     let todayRefundsPaise = 0;
     for (const doc of refundsSnapshot.docs) {
       const ref = doc.data();
-      if ((ref.createdAt || '').startsWith(today)) {
+      if (ref.createdAt && DailyClosingService.toISTDate(ref.createdAt) === today) {
         todayRefundsPaise += ref.netRefundPaise || 0;
       }
     }
@@ -92,7 +106,7 @@ export class DailyClosingService {
     let todayExpensesPaise = 0;
     for (const doc of expensesSnapshot.docs) {
       const exp = doc.data();
-      if ((exp.createdAt || '').startsWith(today)) {
+      if (exp.createdAt && DailyClosingService.toISTDate(exp.createdAt) === today) {
         todayExpensesPaise += exp.amountPaise || 0;
       }
     }
@@ -145,7 +159,7 @@ export class DailyClosingService {
     notes?: string
   ): Promise<DailySummaryDoc> {
     const db = getFirestore();
-    const today = new Date().toISOString().split('T')[0];
+    const today = DailyClosingService.getTodayIST();
     const summaryRef = db.collection(COLLECTIONS.dailySummaries(storeId)).doc(today);
 
     const metrics = await this.getDashboardMetrics(storeId);

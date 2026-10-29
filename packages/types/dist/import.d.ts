@@ -24,6 +24,8 @@ export interface CSVPreviewResult {
     samplePreview: Array<Record<string, unknown>>;
     validationErrors: ImportRowError[];
     fileHash: string;
+    createdCount?: number;
+    updatedCount?: number;
 }
 export interface ImportJob {
     id: string;
@@ -35,6 +37,8 @@ export interface ImportJob {
     processedRows: number;
     successCount: number;
     errorCount: number;
+    createdCount?: number;
+    updatedCount?: number;
     errors: ImportRowError[];
     createdAt: string;
     updatedAt: string;

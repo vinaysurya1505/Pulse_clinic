@@ -29,6 +29,11 @@ export function initializeFirebaseAdmin(): admin.app.App {
   }
 
   initialized = true;
+  try {
+    admin.firestore().settings({ ignoreUndefinedProperties: true });
+  } catch {
+    // Settings may already be locked
+  }
   return admin.app();
 }
 

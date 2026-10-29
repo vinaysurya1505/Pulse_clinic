@@ -8,22 +8,22 @@ import { useStore } from '@/context/StoreContext';
 import { apiPost, ApiError } from '@/lib/api';
 import { CSVPreviewResult, ImportJob } from '@pulseclinic/types';
 
-const CSV_HEADER_ROW = 'Brand Name,Generic Name,Category,Dosage Form,Strength,Pack Size,Allow Loose Sales,Drug Schedule,GST %,HSN,Rack Location,Batch Number,Expiry Date,MRP,Cost Price,Initial Stock';
+const CSV_HEADER_ROW = 'Medicine Name,Form,Rack,Units/Strip,MRP/Strip,Batch #,Expiry,Qty';
 
 const BLANK_TEMPLATE_CSV = `${CSV_HEADER_ROW}
-Augmentin 625 Duo,Amoxicillin + Clavulanic Acid,Antibiotics & Anti-infectives,Tablet,625mg,10,TRUE,H1,12,3004,Rack B-1,AUG2024A,2027-08-31,205.50,145.00,100`;
+Augmentin 625 Duo,Tablet,Rack B-1,10,205.50,AUG2024A,08/2027,100`;
 
 const SAMPLE_CSV = `${CSV_HEADER_ROW}
-Augmentin 625 Duo,Amoxicillin + Clavulanic Acid,Antibiotics & Anti-infectives,Tablet,625mg,10,TRUE,H1,12,3004,Rack B-1,AUG2024A,2027-08-31,205.50,145.00,100
-Dolo 650,Paracetamol,Analgesics & Antipyretics,Tablet,650mg,15,TRUE,NONE,12,3004,Rack A-1,DOL2401,2027-11-30,32.00,22.50,200
-Azithral 500,Azithromycin,Antibiotics & Anti-infectives,Tablet,500mg,5,FALSE,H,12,3004,Rack B-2,AZI5001,2026-12-31,120.00,85.00,50
-Pan 40,Pantoprazole,Gastrointestinal,Tablet,40mg,15,TRUE,H,12,3004,Rack C-1,PAN409,2027-06-30,155.00,105.00,80
-Montek LC,Montelukast + Levocetirizine,Respiratory & Anti-allergic,Tablet,10mg/5mg,10,TRUE,H,12,3004,Rack D-3,MLC881,2027-04-30,195.00,135.00,60
-Telma 40,Telmisartan,Cardiovascular & Antihypertensive,Tablet,40mg,15,TRUE,H,12,3004,Rack E-2,TEL400,2027-09-30,140.00,98.00,90
-Glycomet 500 SR,Metformin Hydrochloride,Antidiabetic,Tablet,500mg,20,TRUE,H,12,3004,Rack F-1,GLY501,2027-05-31,48.00,32.00,150
-Ascoril LS Syrup,Ambroxol + Levosalbutamol,Respiratory & Anti-allergic,Syrup,100ml,1,FALSE,H,12,3004,Rack D-1,ASC100,2026-11-30,118.00,82.00,40
-Betadine 10% Ointment,Povidone Iodine,Dermatological,Ointment,20gm,1,FALSE,NONE,12,3004,Rack G-2,BET020,2028-01-31,95.00,65.00,35
-Shelcal 500,Calcium + Vitamin D3,Vitamins & Supplements,Tablet,500mg,15,TRUE,NONE,12,3004,Rack A-3,SHL500,2027-10-31,130.00,90.00,120`;
+Augmentin 625 Duo,Tablet,Rack B-1,10,205.50,AUG2024A,08/2027,100
+Dolo 650,Tablet,Rack A-1,15,32.00,DOL2401,11/2027,200
+Azithral 500,Tablet,Rack B-2,5,120.00,AZI5001,12/2026,50
+Pan 40,Tablet,Rack C-1,15,155.00,PAN409,06/2027,80
+Montek LC,Tablet,Rack D-3,10,195.00,MLC881,04/2027,60
+Telma 40,Tablet,Rack E-2,15,140.00,TEL400,09/2027,90
+Glycomet 500 SR,Tablet,Rack F-1,20,48.00,GLY501,05/2027,150
+Ascoril LS Syrup,Syrup,Rack D-1,1,118.00,ASC100,11/2026,40
+Betadine 10% Ointment,Ointment,Rack G-2,1,95.00,BET020,01/2028,35
+Shelcal 500,Tablet,Rack A-3,15,130.00,SHL500,10/2027,120`;
 
 export default function CSVImportPage() {
   const { activeStore } = useStore();
@@ -61,7 +61,7 @@ export default function CSVImportPage() {
   };
 
   const handleLoadSample = () => {
-    setFileName('sample-pulseclinic-medicines.csv');
+    setFileName('sample-sanjivani-medicines.csv');
     setCsvContent(SAMPLE_CSV);
     setPreviewResult(null);
     setCompletedJob(null);
@@ -126,7 +126,7 @@ export default function CSVImportPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'pulseclinic_medicine_import_template_blank.csv');
+    link.setAttribute('download', 'sanjivani_medicine_import_template.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -137,7 +137,7 @@ export default function CSVImportPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'pulseclinic_medicines_sample_with_data.csv');
+    link.setAttribute('download', 'sanjivani_medicine_sample_with_data.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -362,103 +362,60 @@ export default function CSVImportPage() {
                 </thead>
                 <tbody>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Brand Name</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Medicine Name</td>
                     <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 700 }}>Mandatory</td>
-                    <td style={{ padding: '8px 12px' }}>Commercial trade formulation name</td>
+                    <td style={{ padding: '8px 12px' }}>Brand / trade name of the medicine</td>
                     <td style={{ padding: '8px 12px', color: '#2563eb' }}>Augmentin 625 Duo</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Generic Name</td>
-                    <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 700 }}>Mandatory</td>
-                    <td style={{ padding: '8px 12px' }}>Active chemical molecule composition</td>
-                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>Amoxicillin + Clavulanic Acid</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Category</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Form</td>
                     <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
-                    <td style={{ padding: '8px 12px' }}>Therapeutic category (e.g. Antibiotics, Analgesics)</td>
-                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>Antibiotics & Anti-infectives</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Dosage Form</td>
-                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
-                    <td style={{ padding: '8px 12px' }}>Tablet, Syrup, Capsule, Ointment, Injection</td>
+                    <td style={{ padding: '8px 12px' }}>Tablet, Syrup, Capsule, Ointment, Injection (default: Tablet)</td>
                     <td style={{ padding: '8px 12px', color: '#2563eb' }}>Tablet</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Strength</td>
-                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
-                    <td style={{ padding: '8px 12px' }}>Dosage strength (e.g. 625mg, 500mg, 100ml)</td>
-                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>625mg</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Pack Size</td>
-                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
-                    <td style={{ padding: '8px 12px' }}>Strip or container pack size (default: 10)</td>
-                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>10</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Allow Loose Sales</td>
-                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
-                    <td style={{ padding: '8px 12px' }}>TRUE or FALSE (permit cutting strips)</td>
-                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>TRUE</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Drug Schedule</td>
-                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
-                    <td style={{ padding: '8px 12px' }}>Regulatory category: NONE, H, H1, or X</td>
-                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>H1</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>GST %</td>
-                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
-                    <td style={{ padding: '8px 12px' }}>Tax slab: 0, 5, 12, 18, 28 (default: 12)</td>
-                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>12</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>HSN</td>
-                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
-                    <td style={{ padding: '8px 12px' }}>Customs HSN code (default: 3004)</td>
-                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>3004</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Rack Location</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Rack</td>
                     <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
                     <td style={{ padding: '8px 12px' }}>Pharmacy shelf / bin location</td>
                     <td style={{ padding: '8px 12px', color: '#2563eb' }}>Rack B-1</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Batch Number</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Units/Strip</td>
                     <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
-                    <td style={{ padding: '8px 12px' }}>Initial inventory batch number</td>
-                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>AUG2024A</td>
+                    <td style={{ padding: '8px 12px' }}>Number of units per strip/pack (default: 10)</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>10</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Expiry Date</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>MRP/Strip</td>
                     <td style={{ padding: '8px 12px', color: '#d97706', fontWeight: 600 }}>Required if Batch given</td>
-                    <td style={{ padding: '8px 12px' }}>Format: YYYY-MM-DD</td>
-                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>2027-08-31</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>MRP</td>
-                    <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
-                    <td style={{ padding: '8px 12px' }}>Maximum Retail Price per pack in Rupees</td>
+                    <td style={{ padding: '8px 12px' }}>Maximum Retail Price per strip in Rupees</td>
                     <td style={{ padding: '8px 12px', color: '#2563eb' }}>205.50</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Cost Price</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Batch #</td>
                     <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
-                    <td style={{ padding: '8px 12px' }}>Store purchase cost per pack in Rupees</td>
-                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>145.00</td>
+                    <td style={{ padding: '8px 12px' }}>Batch number for inventory</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>AUG2024A</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Expiry</td>
+                    <td style={{ padding: '8px 12px', color: '#d97706', fontWeight: 600 }}>Required if Batch given</td>
+                    <td style={{ padding: '8px 12px' }}>Accepts MM/YYYY, MM-YYYY, DD/MM/YYYY, YYYY-MM-DD</td>
+                    <td style={{ padding: '8px 12px', color: '#2563eb' }}>08/2027</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Initial Stock</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0f172a' }}>Qty</td>
                     <td style={{ padding: '8px 12px', color: '#64748b' }}>Optional</td>
-                    <td style={{ padding: '8px 12px' }}>Starting stock quantity in base units</td>
+                    <td style={{ padding: '8px 12px' }}>Stock quantity in base units (default: 1)</td>
                     <td style={{ padding: '8px 12px', color: '#2563eb' }}>100</td>
                   </tr>
                 </tbody>
               </table>
+              <div style={{ marginTop: '12px', padding: '10px 14px', backgroundColor: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+                <div style={{ fontSize: '12px', color: '#1e40af', fontWeight: 600 }}>
+                  Bulk Update Support: If a medicine with the same name already exists, it will be updated instead of creating a duplicate. Existing batches with the same batch number will get stock added.
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -557,8 +514,70 @@ export default function CSVImportPage() {
           </div>
         )}
 
-        {/* Completed Job Success Banner */}
-        {completedJob && (
+        {/* Completed Job Result Banner */}
+        {completedJob && completedJob.status === 'FAILED' ? (
+          <div style={{
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '16px',
+            padding: '28px',
+            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.08)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                backgroundColor: '#ef4444',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                fontSize: '20px',
+                fontWeight: 700
+              }}>
+                ✕
+              </div>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#991b1b', margin: 0 }}>
+                  Bulk Ingestion Failed (Job ID: {completedJob.id})
+                </h3>
+                <p style={{ fontSize: '14px', color: '#b91c1c', margin: '4px 0 0 0' }}>
+                  {completedJob.errorCount} row errors occurred. Zero records were saved to the catalog.
+                </p>
+              </div>
+            </div>
+
+            {completedJob.errors && completedJob.errors.length > 0 && (
+              <div style={{ marginTop: '16px', maxHeight: '200px', overflowY: 'auto', background: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #fca5a5' }}>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: '#991b1b', marginBottom: '6px' }}>Error Details:</div>
+                {completedJob.errors.slice(0, 10).map((err, i) => (
+                  <div key={i} style={{ fontSize: '12px', color: '#7f1d1d', margin: '3px 0' }}>
+                    • Row #{err.rowNumber}: {err.message}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '14px', marginTop: '20px' }}>
+              <button
+                onClick={() => setCompletedJob(null)}
+                style={{
+                  padding: '9px 18px',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                ← Back to Upload & Retry
+              </button>
+            </div>
+          </div>
+        ) : completedJob ? (
           <div style={{
             background: '#f0fdf4',
             border: '1px solid #bbf7d0',
@@ -586,7 +605,8 @@ export default function CSVImportPage() {
                   Bulk Ingestion Successfully Executed! (Job ID: {completedJob.id})
                 </h3>
                 <p style={{ fontSize: '14px', color: '#166534', margin: '4px 0 0 0' }}>
-                  Processed {completedJob.processedRows} rows in chunks of 25. Created {completedJob.successCount} formulary records with zero transaction failures.
+                  Processed {completedJob.processedRows} rows — {completedJob.createdCount || 0} new medicines created, {completedJob.updatedCount || 0} existing medicines updated.
+                  {completedJob.errorCount > 0 && ` (${completedJob.errorCount} errors)`}
                 </p>
               </div>
             </div>
@@ -623,7 +643,7 @@ export default function CSVImportPage() {
               </Link>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Pre-Ingestion Data Grid Preview */}
         {previewResult && !completedJob && (
@@ -665,13 +685,11 @@ export default function CSVImportPage() {
                 padding: '16px 20px',
                 border: '1px solid #e2e8f0'
               }}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>Schema Errors</div>
-                <div style={{ fontSize: '26px', fontWeight: 700, color: previewResult.errorRowsCount > 0 ? '#ef4444' : '#64748b', marginTop: '4px' }}>
-                  {previewResult.errorRowsCount}
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>New Medicines</div>
+                <div style={{ fontSize: '26px', fontWeight: 700, color: '#2563eb', marginTop: '4px' }}>
+                  {previewResult.createdCount || 0}
                 </div>
-                <div style={{ fontSize: '12px', color: previewResult.errorRowsCount > 0 ? '#ef4444' : '#64748b', marginTop: '2px', fontWeight: 500 }}>
-                  {previewResult.errorRowsCount > 0 ? 'Action required' : 'Zero errors'}
-                </div>
+                <div style={{ fontSize: '12px', color: '#2563eb', marginTop: '2px', fontWeight: 500 }}>Will be created</div>
               </div>
 
               <div style={{
@@ -680,11 +698,26 @@ export default function CSVImportPage() {
                 padding: '16px 20px',
                 border: '1px solid #e2e8f0'
               }}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>SHA-256 Checksum</div>
-                <div style={{ fontSize: '12px', fontFamily: 'monospace', color: '#475569', marginTop: '8px', wordBreak: 'break-all' }}>
-                  {previewResult.fileHash.slice(0, 16)}...
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>Existing Updates</div>
+                <div style={{ fontSize: '26px', fontWeight: 700, color: '#f59e0b', marginTop: '4px' }}>
+                  {previewResult.updatedCount || 0}
                 </div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Idempotency verified</div>
+                <div style={{ fontSize: '12px', color: '#f59e0b', marginTop: '2px', fontWeight: 500 }}>Will be updated</div>
+              </div>
+
+              <div style={{
+                background: '#ffffff',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                border: '1px solid #e2e8f0'
+              }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>Errors</div>
+                <div style={{ fontSize: '26px', fontWeight: 700, color: previewResult.errorRowsCount > 0 ? '#ef4444' : '#64748b', marginTop: '4px' }}>
+                  {previewResult.errorRowsCount}
+                </div>
+                <div style={{ fontSize: '12px', color: previewResult.errorRowsCount > 0 ? '#ef4444' : '#64748b', marginTop: '2px', fontWeight: 500 }}>
+                  {previewResult.errorRowsCount > 0 ? 'Action required' : 'Zero errors'}
+                </div>
               </div>
             </div>
 
@@ -789,13 +822,15 @@ export default function CSVImportPage() {
                       textTransform: 'uppercase'
                     }}>
                       <th style={{ padding: '12px 16px' }}>Row</th>
-                      <th style={{ padding: '12px 16px' }}>Brand Formulation</th>
-                      <th style={{ padding: '12px 16px' }}>Generic Molecule</th>
-                      <th style={{ padding: '12px 16px' }}>Category</th>
-                      <th style={{ padding: '12px 16px' }}>Pack Size</th>
+                      <th style={{ padding: '12px 16px' }}>Action</th>
+                      <th style={{ padding: '12px 16px' }}>Medicine Name</th>
+                      <th style={{ padding: '12px 16px' }}>Form</th>
+                      <th style={{ padding: '12px 16px' }}>Rack</th>
+                      <th style={{ padding: '12px 16px' }}>Units/Strip</th>
+                      <th style={{ padding: '12px 16px' }}>MRP/Strip</th>
                       <th style={{ padding: '12px 16px' }}>Batch #</th>
                       <th style={{ padding: '12px 16px' }}>Expiry</th>
-                      <th style={{ padding: '12px 16px' }}>MRP</th>
+                      <th style={{ padding: '12px 16px' }}>Qty</th>
                     </tr>
                   </thead>
                   <tbody style={{ fontSize: '13px', color: '#1e293b' }}>
@@ -807,17 +842,31 @@ export default function CSVImportPage() {
                         }}
                       >
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>#{item.rowNumber as number}</td>
-                        <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>
-                          {item.brandName as string} <span style={{ color: '#64748b', fontWeight: 400 }}>({item.strength as string})</span>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            backgroundColor: (item.action as string) === 'UPDATE' ? '#fef3c7' : '#dbeafe',
+                            color: (item.action as string) === 'UPDATE' ? '#92400e' : '#1e40af',
+                          }}>
+                            {(item.action as string) === 'UPDATE' ? 'UPDATE' : 'NEW'}
+                          </span>
                         </td>
-                        <td style={{ padding: '12px 16px', color: '#475569' }}>{item.genericName as string}</td>
-                        <td style={{ padding: '12px 16px', color: '#475569' }}>{item.category as string}</td>
-                        <td style={{ padding: '12px 16px', color: '#0f172a', fontWeight: 600 }}>{item.stripSize as number} units</td>
-                        <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>{(item.batchNumber as string) || '—'}</td>
-                        <td style={{ padding: '12px 16px' }}>{(item.expiryDate as string) || '—'}</td>
+                        <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>
+                          {item.brandName as string}
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#475569' }}>{item.dosageForm as string}</td>
+                        <td style={{ padding: '12px 16px', color: '#475569' }}>{(item.rackLocation as string) || '—'}</td>
+                        <td style={{ padding: '12px 16px', color: '#0f172a', fontWeight: 600 }}>{item.stripSize as number}</td>
                         <td style={{ padding: '12px 16px', fontWeight: 600 }}>
                           {item.mrp ? `₹${item.mrp}` : '—'}
                         </td>
+                        <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>{(item.batchNumber as string) || '—'}</td>
+                        <td style={{ padding: '12px 16px' }}>{(item.expiryDate as string) || '—'}</td>
+                        <td style={{ padding: '12px 16px', fontWeight: 600 }}>{item.qty as string}</td>
                       </tr>
                     ))}
                   </tbody>
