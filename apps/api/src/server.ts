@@ -23,6 +23,7 @@ import { vaultRouter } from './routes/vault';
 import { rateLimiter } from './middleware/rate-limiter';
 import { sanitizeRequest, secureHeaders } from './middleware/security';
 import { errorHandler } from './middleware/error-handler';
+import { SchedulerService } from './services/SchedulerService';
 
 initializeFirebaseAdmin();
 
@@ -65,6 +66,7 @@ app.use(errorHandler);
 if (process.env.VERCEL !== '1') {
   app.listen(PORT, () => {
     console.log(`PulseClinic API running on port ${PORT}`);
+    SchedulerService.start();
   });
 }
 

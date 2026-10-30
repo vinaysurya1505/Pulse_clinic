@@ -71,6 +71,33 @@ export default function BatchesPage() {
   const [ledgerBatchTitle, setLedgerBatchTitle] = useState('');
   const [ledgerLoading, setLedgerLoading] = useState(false);
 
+  // Expiry Report Email Trigger State
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
+
+  const handleSendExpiryEmailReport = async () => {
+    if (!activeStore) return;
+    setSendingEmail(true);
+    setEmailStatus(null);
+    try {
+      const res = await apiPost<{ success: boolean; message: string }>(
+        `/jobs/cron/expiry-alert?storeId=${activeStore.storeId}&force=true`,
+        {},
+        activeStore.storeId
+      );
+      if (res.success) {
+        setEmailStatus(res.message || 'Expiry alert email dispatched to store owner successfully!');
+        setTimeout(() => setEmailStatus(null), 6000);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof ApiError ? err.message : 'Failed to send expiry email.';
+      setEmailStatus(msg);
+      setTimeout(() => setEmailStatus(null), 6000);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const fetchBatches = async () => {
     if (!activeStore) return;
     setLoading(true);
@@ -427,6 +454,29 @@ export default function BatchesPage() {
 
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
+              onClick={handleSendExpiryEmailReport}
+              disabled={sendingEmail}
+              id="send-expiry-email-btn"
+              title="Dispatches urgent near-expiry list (≤ 30 days) to store owner email"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                backgroundColor: '#ffffff',
+                color: '#0f172a',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: sendingEmail ? 'not-allowed' : 'pointer',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>{sendingEmail ? '⏳ Dispatching...' : '✉️ Send Expiry Email (≤30d)'}</span>
+            </button>
+            <button
               onClick={handleOpenAddModal}
               id="add-batch-btn"
               style={{
@@ -449,6 +499,32 @@ export default function BatchesPage() {
             </button>
           </div>
         </div>
+
+        {emailStatus && (
+          <div
+            style={{
+              padding: '12px 18px',
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: '8px',
+              color: '#15803d',
+              fontSize: '14px',
+              fontWeight: 600,
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>📧 {emailStatus}</span>
+            <button
+              onClick={() => setEmailStatus(null)}
+              style={{ background: 'none', border: 'none', color: '#15803d', cursor: 'pointer', fontSize: '16px' }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Metric Cards */}
         <div style={{
