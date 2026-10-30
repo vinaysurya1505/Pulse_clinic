@@ -26,17 +26,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [user, authLoading, router]);
 
-  // Show greeting pop up on login / session
-  useEffect(() => {
-    if (user && activeStore && typeof window !== 'undefined') {
-      const dismissed = sessionStorage.getItem('inauguration_greeting_dismissed') === 'true';
-      if (!dismissed) {
-        setShowGreeting(true);
-      }
-    }
-  }, [user, activeStore]);
-
-  // Listen to custom event to re-open greeting from TopBar anytime
+  // Listen to custom event to open greeting from TopBar button
   useEffect(() => {
     const handleOpen = () => setShowGreeting(true);
     window.addEventListener('open-inauguration-greeting', handleOpen);
@@ -45,9 +35,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleCloseGreeting = () => {
     setShowGreeting(false);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('inauguration_greeting_dismissed', 'true');
-    }
   };
 
   const handleGlobalShortcuts = useCallback((e: KeyboardEvent) => {
